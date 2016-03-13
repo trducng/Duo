@@ -5,14 +5,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+
+import com.ducnguyen.duo.data.DataContract;
 
 public class WelcomeActivity extends AppCompatActivity {
 
     // collect user's location, current time and user ID
+    Context mContext = this;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,10 +33,30 @@ public class WelcomeActivity extends AppCompatActivity {
             @Override
             public void run() {
                 try {
+                    Log.v("Thread", "run1");
                     super.run();
+
+//                    Utility.FakeData.addBookmarkData(mContext);
+//                    Utility.FakeData.addSearchData(mContext);
+//                    Utility.FakeData.addDetailedData(mContext);
+//                    Utility.FakeData.addProductData(mContext);
+
+
+                    Cursor test = getContentResolver().query(
+                            DataContract.productsEntry.buildURI("harrypotter"),
+                            null, null, null, null);
+
+                    while (test.moveToNext()) {
+                        Log.v("Test ContentProvider", "itemID: " + test.getString(test.getColumnIndex("itemID")));
+                    }
+
+                    test.close();
+
+                    Log.v("Thread", "run2");
                     // wait 3000 milliseconds
                     sleep(3000);
                 } catch (Exception e) {
+                    Log.e("WelcomeActivity:", e.toString());
 
                 } finally {
 
@@ -45,11 +70,16 @@ public class WelcomeActivity extends AppCompatActivity {
             }
         };
 
+        // Begin, for testing data
+
+        // End, for testing data
+
         // SharedPreferences to check if this is the first time the user runs the app
         SharedPreferences prefs = getSharedPreferences("com.ducnguyen.duo", MODE_PRIVATE);
         if (prefs.getBoolean("firstrun", true)) {
             // TODO: redirect to setting up activity
             prefs.edit().putBoolean("firstrun", false).commit();
+            welcomeThread.start();
         } else {
             welcomeThread.start();
             // check if user grants location permission, if it is granted, perform

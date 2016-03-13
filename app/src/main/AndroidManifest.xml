@@ -21,6 +21,12 @@
             </intent-filter>
         </activity>
         <activity android:name=".SearchActivity"></activity>
+
+        <provider
+            android:authorities="@string/package_name"
+            android:name=".data.DataProvider"
+            android:exported="false"
+            android:syncable="true" />
     </application>
 
 </manifest>

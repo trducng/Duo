@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Duo</string>
+    <string name="package_name">com.ducnguyen.duo</string>
 </resources>
