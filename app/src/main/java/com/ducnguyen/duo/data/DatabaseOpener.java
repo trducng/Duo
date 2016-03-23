@@ -12,6 +12,7 @@ import com.ducnguyen.duo.data.DataContract.productsEntry;
 import com.ducnguyen.duo.data.DataContract.searchEntry;
 import com.ducnguyen.duo.data.DataContract.testimonialsEntry;
 import com.ducnguyen.duo.data.DataContract.loyaltyEntry;
+import com.ducnguyen.duo.data.DataContract.recommendEntry;
 
 
 /**
@@ -20,7 +21,7 @@ import com.ducnguyen.duo.data.DataContract.loyaltyEntry;
  */
 public class DatabaseOpener extends SQLiteOpenHelper {
 
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 3;
 
     static final String DATABASE_NAME = "duo.db";
 
@@ -35,18 +36,21 @@ public class DatabaseOpener extends SQLiteOpenHelper {
 
         Log.v("DatabaseOpener", "In onCreate beginning to create table");
 
-        // Create bookmark table
-        final String SQL_CREATE_BOOKMARK_TABLE = "CREATE TABLE "
-                + DataContract.BOOKMARK + " ("
-                + bookmarkEntry.COL_LISTNAME + " TEXT NOT NULL, "
+        // Create tag table
+
+        final String SQL_CREATE_TAG_TABLE = "CREATE TABLE "
+                + DataContract.TAG + " ("
+                + bookmarkEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + bookmarkEntry.COL_TAG + " TEXT NOT NULL, "
                 + bookmarkEntry.COL_BUSID + " TEXT NOT NULL, "
                 + bookmarkEntry.COL_BUSNAME + " TEXT NOT NULL, "
-                + bookmarkEntry.COL_BUSPHONE + " TEXT, "
                 + bookmarkEntry.COL_BUSLOCATION + " TEXT NOT NULL, "
                 + bookmarkEntry.COL_BUSSERVICES + " TEXT, "
                 + bookmarkEntry.COL_BUSCOVERIMAGE + " TEXT, "
                 // TODO: COL_TIMEADDED should be " INTEGER NOT NULL "
                 // change to TEXT NOT NULL just for testing
+                + bookmarkEntry.COL_LATITUDE + " REAL NOT NULL, "
+                + bookmarkEntry.COL_LONGITUDE + " REAL NOT NULL, "
                 + bookmarkEntry.COL_TIMEADDED + " TEXT NOT NULL "
                 + " );";
 
@@ -76,7 +80,7 @@ public class DatabaseOpener extends SQLiteOpenHelper {
                 + loyaltyEntry.COLUMN_LOYALTYDETAIL + " TEXT NOT NULL "
                 + ");";
 
-//        // Create search table
+        // Create search table
         final String SQL_CREATE_SEARCH_TABLE = "CREATE TABLE "
                 + DataContract.SEARCH + " ("
                 + searchEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -85,6 +89,18 @@ public class DatabaseOpener extends SQLiteOpenHelper {
                 + searchEntry.COLUMN_BUSLOCATION + " TEXT NOT NULL, "
                 + searchEntry.COLUMN_BUSSERVICES + " TEXT NOT NULL, "
                 + searchEntry.COLUMN_BUSCOVERIMAGE + " TEXT NOT NULL "
+                + ");";
+
+        // Create recommendation table
+        final String SQL_CREATE_REC_TABLE = "CREATE TABLE "
+                + DataContract.RECOMMENDATION + " ("
+                + recommendEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + recommendEntry.COL_BUSID + " TEXT NOT NULL, "
+                + recommendEntry.COL_BUSNAME + " TEXT NOT NULL, "
+                + recommendEntry.COL_BUSLOCATION + " TEXT NOT NULL, "
+                + recommendEntry.COL_BUSSERVICES + " TEXT NOT NULL, "
+                + recommendEntry.COL_BUSCOVERIMAGE + " TEXT NOT NULL, "
+                + recommendEntry.COL_DISTANCE + " REAL NOT NULL "
                 + ");";
 
         // Create events table
@@ -104,7 +120,8 @@ public class DatabaseOpener extends SQLiteOpenHelper {
 //        db.execSQL(SQL_CREATE_PRODUCTS_TABLE);
 //        db.execSQL(SQL_CREATE_TESTIMONIALS_TABLE);
         db.execSQL(SQL_CREATE_EVENTS_TABLE);
-        db.execSQL(SQL_CREATE_BOOKMARK_TABLE);
+        db.execSQL(SQL_CREATE_TAG_TABLE);
+        db.execSQL(SQL_CREATE_REC_TABLE);
         Log.v("DatabaseOpener", "Table created");
 
     }
@@ -115,13 +132,14 @@ public class DatabaseOpener extends SQLiteOpenHelper {
         // Delete the old tables
         // TODO: must have some way to retain DETAILED, PRODUCTS
         // TESTIMONIALS and LOYALTY data
-        db.execSQL("DROP TABLE IF EXISTS " + DataContract.BOOKMARK);
+        db.execSQL("DROP TABLE IF EXISTS " + DataContract.TAG);
         db.execSQL("DROP TABLE IF EXISTS " + DataContract.DETAILED);
 //        db.execSQL("DROP TABLE IF EXISTS " + DataContract.PRODUCTS);
 //        db.execSQL("DROP TABLE IF EXISTS " + DataContract.TESTIMONIALS);
         db.execSQL("DROP TABLE IF EXISTS " + DataContract.LOYALTY);
         db.execSQL("DROP TABLE IF EXISTS " + DataContract.SEARCH);
         db.execSQL("DROP TABLE IF EXISTS " + DataContract.EVENTS);
+        db.execSQL("DROP TABLE IF EXISTS " + DataContract.RECOMMENDATION);
 
         // Create the new tables
         onCreate(db);
