@@ -4,8 +4,9 @@ import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.content.UriMatcher;
 import android.database.Cursor;
+import android.database.SQLException;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
-import android.support.annotation.Nullable;
 import android.util.Log;
 
 /**
@@ -21,8 +22,10 @@ public class DataProvider extends ContentProvider {
     // this ContentProvider interacts with the database
     static final int EACH_BUSINESS = 100;
     static final int EACH_LOYALTY = 102;
+    static final int SINGLE_BOOKMARK = 101;
 
-    static final int SEARCH_OR_RECOMMENDATION = 200;
+    static final int SEARCH = 200;
+    static final int RECOMMENDATION = 201;
     static final int ALL_BOOKMARKS = 210;
     static final int EACH_BOOKMARK = 211;
     static final int ALL_LOYALTY = 220;
@@ -54,12 +57,16 @@ public class DataProvider extends ContentProvider {
                 return DataContract.detailedEntry.CONTENT_ITEM_TYPE;
             case EACH_LOYALTY:
                 return DataContract.loyaltyEntry.CONTENT_ITEM_TYPE;
-            case SEARCH_OR_RECOMMENDATION:
+            case SEARCH:
                 return DataContract.searchEntry.CONTENT_TYPE;
+            case RECOMMENDATION:
+                return DataContract.recommendEntry.CONTENT_TYPE;
             case ALL_BOOKMARKS:
                 return DataContract.bookmarkEntry.CONTENT_TYPE;
             case EACH_BOOKMARK:
                 return DataContract.bookmarkEntry.CONTENT_TYPE;
+            case SINGLE_BOOKMARK:
+                return DataContract.bookmarkEntry.CONTENT_ITEM_TYPE;
             case ALL_LOYALTY:
                 return DataContract.loyaltyEntry.CONTENT_TYPE;
             case ALL_EVENTS:
@@ -82,7 +89,7 @@ public class DataProvider extends ContentProvider {
         switch(mUriMatcher.match(uri)) {
             case ALL_BOOKMARKS: {
                 reCursor = mDatabaseOpener.getReadableDatabase()
-                        .query(DataContract.BOOKMARK,
+                        .query(DataContract.TAG,
                                 projection,
                                 selection,
                                 selectionArgs,
@@ -114,9 +121,19 @@ public class DataProvider extends ContentProvider {
                 reCursor = returnEachBookmarkList(uri, projection, sortOrder);
                 break;
             }
-            case SEARCH_OR_RECOMMENDATION: {
+            case SEARCH: {
                 reCursor = mDatabaseOpener.getReadableDatabase()
                         .query(DataContract.SEARCH,
+                                projection,
+                                selection,
+                                selectionArgs,
+                                null, null,
+                                sortOrder);
+                break;
+            }
+            case RECOMMENDATION: {
+                reCursor = mDatabaseOpener.getReadableDatabase()
+                        .query(DataContract.RECOMMENDATION,
                                 projection,
                                 selection,
                                 selectionArgs,
@@ -150,15 +167,90 @@ public class DataProvider extends ContentProvider {
         return 0;
     }
 
-    @Nullable
     @Override
     public Uri insert(Uri uri, ContentValues values) {
-        return null;
+
+        Uri returnUri;
+
+        switch (mUriMatcher.match(uri)) {
+            case SINGLE_BOOKMARK: {
+                long _id = mDatabaseOpener.getWritableDatabase().insert(
+                                DataContract.TAG, null, values
+                );
+                if (_id > 0) {
+                    returnUri = uri;
+                } else {
+                    throw new SQLException("Failed to insert row into " + uri);
+                }
+                break;
+            }
+
+            default:
+                throw new UnsupportedOperationException("Unknown uri: " + uri);
+        }
+        getContext().getContentResolver().notifyChange(uri, null);
+        return returnUri;
     }
 
     @Override
+    public int bulkInsert(Uri uri, ContentValues[] values) {
+
+        final SQLiteDatabase db = mDatabaseOpener.getWritableDatabase();
+
+        switch(mUriMatcher.match(uri)) {
+            case RECOMMENDATION: {
+                db.beginTransaction();
+                int returnCount = 0;
+                try {
+                    for (ContentValues value: values) {
+                        long _id = db.insert(DataContract.RECOMMENDATION, null, value);
+                        if (_id != -1) {
+                            returnCount++;
+                        }
+                    }
+                    db.setTransactionSuccessful();;
+                } finally {
+                    db.endTransaction();
+                }
+                getContext().getContentResolver().notifyChange(uri, null);
+                return returnCount;
+            }
+            default:
+                return super.bulkInsert(uri, values);
+        }
+    }
+
+
+    /**
+     * This method will analyze which table should be affected from the uri, and then delete
+     * rows that pass the selection and selectionArgs. To delete all rows in the table, pass
+     * in null for both selection and selectionArgs.
+     * @param uri               the uri that matches appropriate table
+     * @param selection         the WHERE = ? condition to find the rows
+     * @param selectionArgs     the range of values that match with selection
+     * @return                  the number of rows deleted
+     */
+    @Override
     public int delete(Uri uri, String selection, String[] selectionArgs) {
-        return 0;
+
+        SQLiteDatabase db = mDatabaseOpener.getWritableDatabase();
+        int rowsDeleted;
+        if (selection == null) selection = "1";
+
+        switch (mUriMatcher.match(uri)) {
+            case RECOMMENDATION: {
+                rowsDeleted = db.delete(DataContract.RECOMMENDATION, selection, selectionArgs);
+                break;
+            }
+            default:
+                throw new UnsupportedOperationException("Unknown uri: " + uri);
+        }
+
+        if (rowsDeleted != 0) {
+            getContext().getContentResolver().notifyChange(uri, null);
+        }
+
+        return rowsDeleted;
     }
 
     static UriMatcher buildUriMatcher() {
@@ -171,16 +263,18 @@ public class DataProvider extends ContentProvider {
         final String authority = DataContract.PACKAGE_NAME;
 
         // We match each possible Uri to a corresponding MIME type
-        matcher.addURI(authority, DataContract.SEARCH, SEARCH_OR_RECOMMENDATION);
-        matcher.addURI(authority, DataContract.BOOKMARK, ALL_BOOKMARKS);
-        matcher.addURI(authority, DataContract.BOOKMARK + "/*", EACH_BOOKMARK);
+        matcher.addURI(authority, DataContract.SEARCH, SEARCH);
+        matcher.addURI(authority, DataContract.RECOMMENDATION, RECOMMENDATION);
+        matcher.addURI(authority, DataContract.TAG, ALL_BOOKMARKS);
+        matcher.addURI(authority, DataContract.TAG + "/*", EACH_BOOKMARK);
+        matcher.addURI(authority, DataContract.TAG + "/*/*", SINGLE_BOOKMARK);
         matcher.addURI(authority, DataContract.LOYALTY, ALL_LOYALTY);
         matcher.addURI(authority, DataContract.EVENTS, ALL_EVENTS);
         matcher.addURI(authority, DataContract.PRODUCTS + "/*", EACH_BUSINESS_PRODUCTS);
         matcher.addURI(authority, DataContract.TESTIMONIALS + "/*", EACH_BUSINESS_TESTIMONIALS);
 
         matcher.addURI(authority, DataContract.DETAILED + "/*", EACH_BUSINESS);
-        matcher.addURI(authority, DataContract.BOOKMARK + "/*/*", EACH_BUSINESS);
+        matcher.addURI(authority, DataContract.TAG + "/*/*", EACH_BUSINESS);
         matcher.addURI(authority, DataContract.EVENTS + "/*", EACH_BUSINESS);
         matcher.addURI(authority, DataContract.LOYALTY + "/*", EACH_LOYALTY);
 
@@ -191,13 +285,15 @@ public class DataProvider extends ContentProvider {
 
         // This function gets the URI and return the list of businesses bookmarked in a list
         // with a common listName
-        String listName = DataContract.bookmarkEntry.getListName(uri);
-        String condition = DataContract.bookmarkEntry.COL_LISTNAME + " = ?";
+        String[] allTags = DataContract.bookmarkEntry.getTagNames(uri);
+        String condition = DataContract.bookmarkEntry.buildConditionalQuery(allTags);
+
         Log.v("Provider", "Condition: " + condition);
-        return mDatabaseOpener.getReadableDatabase().query(DataContract.BOOKMARK,
+
+        return mDatabaseOpener.getReadableDatabase().query(DataContract.TAG,
                             projection,
                             condition,
-                            new String[]{listName},
+                            allTags,
                             null, null,
                             sortOrder);
 

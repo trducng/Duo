@@ -3,7 +3,7 @@ package com.ducnguyen.duo.data;
 import android.content.ContentResolver;
 import android.net.Uri;
 import android.provider.BaseColumns;
-import android.util.Log;
+import android.text.TextUtils;
 
 /**
  * Created by ducnguyen on 3/7/16.
@@ -24,12 +24,13 @@ public class DataContract {
             Uri.parse("content://" + PACKAGE_NAME);
 
     // Define table names
-    public static final String BOOKMARK = "bookmark";
+    public static final String TAG = "tag";
     public static final String DETAILED = "detailed";
     public static final String PRODUCTS = "products";
     public static final String TESTIMONIALS = "testimonials";
     public static final String LOYALTY = "loyalty";
     public static final String SEARCH = "search";
+    public static final String RECOMMENDATION = "recom";
     public static final String EVENTS = "events";
 
 
@@ -38,41 +39,79 @@ public class DataContract {
 
         // Unique Uri for this table
         public static final Uri CONTENT_URI =
-                BASE_URI.buildUpon().appendPath(BOOKMARK).build();
+                BASE_URI.buildUpon().appendPath(TAG).build();
 
         // Unique MIME type for data from this table
         public static final String CONTENT_TYPE =
                 ContentResolver.CURSOR_DIR_BASE_TYPE + "/"
-                + PACKAGE_NAME + "/" + BOOKMARK;
+                + PACKAGE_NAME + "/" + TAG;
         public static final String CONTENT_ITEM_TYPE =
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
-                + PACKAGE_NAME + "/" + BOOKMARK;
+                + PACKAGE_NAME + "/" + TAG;
 
         // Constants for each columns
-        public static final String COL_LISTNAME = "listName";
+        public static final String COL_TAG = "tag";
         public static final String COL_BUSID = "busID";
         public static final String COL_BUSNAME = "busName";
-        public static final String COL_BUSPHONE = "busPhone";
         public static final String COL_BUSLOCATION = "busLocation";
         public static final String COL_BUSSERVICES = "busServices";
         public static final String COL_BUSCOVERIMAGE = "busCovImage";
+        public static final String COL_LATITUDE = "lat";
+        public static final String COL_LONGITUDE = "long";
         public static final String COL_TIMEADDED = "timeAdded";
+
+        public static final String selecTags =
+                "WHERE " + COL_TAG + " = ?";
 
         public static Uri buildGeneralBookmark() {
 
             // URI to call for list of all bookmark lists
-            // content://com.ducnguyen.duo/bookmark
+            // content://com.ducnguyen.duo/tag
             return CONTENT_URI;
         }
 
-        public static Uri buildSpecificBookmark(String listName) {
+        public static Uri buildSpecificBookmark(String[] listName) {
 
             // URI to call for a specific bookmark list
-            // content://com.ducnguyen.duo/bookmark/<listName>
-            return CONTENT_URI.buildUpon().appendPath(listName).build();
+            // content://com.ducnguyen.duo/tag/<listName>
+
+            String allTags = TextUtils.join(",", listName);
+            return CONTENT_URI.buildUpon().appendPath(allTags).build();
         }
 
-        public static String getListName(Uri uri) {
+        public static Uri buildSingleBookmark(String tagName, String busID) {
+
+            // URI to insert an entry to the Tag table
+            // content://com.ducnguyen.duo/tag/<tagName>/<busID>
+            return CONTENT_URI.buildUpon().appendPath(tagName)
+                    .appendPath(busID).build();
+        }
+
+
+        public static String buildConditionalQuery(String[] allTags) {
+
+            // Buid the query to retrieve items from SQLitedatabase
+            // Based on the number of tags (allTags.length), construct
+            // the query accordingly. Example: allTags = {"tag1", "tag2"}
+            // then the outcome will be "TAG = ? OR TAG = ? "
+            String baseString = COL_TAG + " = ? ";
+
+            if (allTags.length == 1) {
+                return baseString;
+            } else {
+                String finalString = baseString;
+                for (int dummy_idx = 0;
+                     dummy_idx < allTags.length - 1;
+                     dummy_idx++) {
+
+                    finalString += " OR ";
+                    finalString += baseString;
+                }
+                return finalString;
+            }
+        }
+
+        public static String[] getTagNames(Uri uri) {
 
             // This function returns the listName given a bookmark URI
             // content://com.ducnguyen.duo/bookmark/<listName>
@@ -80,10 +119,24 @@ public class DataContract {
             // TODO: delete the variable, just return
 
             String[] segments = uri.getPath().split("/");
-            String result = segments[segments.length-1];
+            String[] allTags = segments[segments.length - 1].split(",");
 
-            Log.v("Bookmark->getListName", "listName: " + result);
-            return result;
+            return allTags;
+        }
+
+        /**
+         * Takes an uri that is created by buildSingleBookmark(tagName, busID),
+         * which will looks like content://com.ducnguyen.duo/tag/<tagName>/<busID>
+         * and returns both tagName and busID.
+         *
+         * @param   uri     the URI created by buildSingleBookmark
+         * @return          {tagName, busID}
+         */
+        public static String[] getTagNameAndBusID(Uri uri) {
+
+            String[] segments = uri.getPath().split("/");
+            return new String[] {   segments[segments.length-2],
+                                    segments[segments.length-1] };
         }
 
     }
@@ -266,6 +319,33 @@ public class DataContract {
 
             // Return a URI to return all search results
             // content://com.ducnguyen.duo/search
+            return CONTENT_URI;
+        }
+    }
+
+    public static final class recommendEntry implements BaseColumns {
+
+        public static final Uri CONTENT_URI =
+                BASE_URI.buildUpon().appendPath(RECOMMENDATION).build();
+
+        public static final String CONTENT_TYPE =
+                ContentResolver.CURSOR_DIR_BASE_TYPE + "/"
+                + PACKAGE_NAME + "/" + RECOMMENDATION;
+        public static final String CONTENT_ITEM_TYPE =
+                ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
+                + PACKAGE_NAME + "/" + RECOMMENDATION;
+
+        public static final String COL_BUSID = "busID";
+        public static final String COL_BUSNAME = "busName";
+        public static final String COL_BUSLOCATION = "busLocation";
+        public static final String COL_BUSSERVICES = "busServices";
+        public static final String COL_BUSCOVERIMAGE = "busCovImage";
+        public static final String COL_DISTANCE = "dis";
+
+        public static Uri buildURI() {
+
+            // Return a URI to return all recommendation results
+            // content://com.ducnguyen.duo/recom
             return CONTENT_URI;
         }
     }

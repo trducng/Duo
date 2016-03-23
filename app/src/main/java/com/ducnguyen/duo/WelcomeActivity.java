@@ -2,22 +2,27 @@ package com.ducnguyen.duo;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.CursorLoader;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 
-import com.ducnguyen.duo.data.DataContract;
+import com.ducnguyen.duo.home.HomeActivity;
 
 public class WelcomeActivity extends AppCompatActivity {
 
+    public static final String LOG_CAT =
+            WelcomeActivity.class.getSimpleName();
+
     // collect user's location, current time and user ID
     Context mContext = this;
+
+    CursorLoader mCursorLoader;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,21 +41,7 @@ public class WelcomeActivity extends AppCompatActivity {
                     Log.v("Thread", "run1");
                     super.run();
 
-//                    Utility.FakeData.addBookmarkData(mContext);
-//                    Utility.FakeData.addSearchData(mContext);
-//                    Utility.FakeData.addDetailedData(mContext);
-//                    Utility.FakeData.addProductData(mContext);
-
-
-                    Cursor test = getContentResolver().query(
-                            DataContract.productsEntry.buildURI("harrypotter"),
-                            null, null, null, null);
-
-                    while (test.moveToNext()) {
-                        Log.v("Test ContentProvider", "itemID: " + test.getString(test.getColumnIndex("itemID")));
-                    }
-
-                    test.close();
+                    Utility.FakeData.addTagData(mContext);
 
                     Log.v("Thread", "run2");
                     // wait 3000 milliseconds
@@ -60,7 +51,7 @@ public class WelcomeActivity extends AppCompatActivity {
 
                 } finally {
 
-                    Intent i = new Intent(WelcomeActivity.this, SearchActivity.class);
+                    Intent i = new Intent(WelcomeActivity.this, HomeActivity.class);
 
                     // start searching activity
                     startActivity(i);
@@ -69,10 +60,6 @@ public class WelcomeActivity extends AppCompatActivity {
                 }
             }
         };
-
-        // Begin, for testing data
-
-        // End, for testing data
 
         // SharedPreferences to check if this is the first time the user runs the app
         SharedPreferences prefs = getSharedPreferences("com.ducnguyen.duo", MODE_PRIVATE);
@@ -86,7 +73,9 @@ public class WelcomeActivity extends AppCompatActivity {
             // sending location and time uri to the server
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED) {
-                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, Utility.ll);
+                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
+                                          0, 0,
+                                          Utility.locationUri);
             } else {
                 // TODO: if the user does not grant location permission, just send
                 // a query uri to the server, goes to the search page and indicate
