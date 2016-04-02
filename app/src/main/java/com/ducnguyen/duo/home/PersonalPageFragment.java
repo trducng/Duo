@@ -42,12 +42,12 @@ public class PersonalPageFragment extends Fragment {
     public static final String[] TAG_COLS = {
         bookmarkEntry._ID,
         bookmarkEntry.COL_BUSID,
-        bookmarkEntry.COL_BUSNAME,
-        bookmarkEntry.COL_BUSLOCATION,
-        bookmarkEntry.COL_BUSSERVICES,
-        bookmarkEntry.COL_BUSCOVERIMAGE,
-        bookmarkEntry.COL_LATITUDE,
-        bookmarkEntry.COL_LONGITUDE
+        bookmarkEntry.COL_NAME,
+        bookmarkEntry.COL_LOC,
+        bookmarkEntry.COL_SERVS,
+        bookmarkEntry.COL_CIMG,
+        bookmarkEntry.COL_LAT,
+        bookmarkEntry.COL_LONG
     };
 
     static final int COL_ID = 0;
@@ -62,7 +62,7 @@ public class PersonalPageFragment extends Fragment {
     private ListView mListView;
     private PersonalPageAdapter mCursorAdapter;
     static LocationManager lm;
-    static boolean hasLocation = false;
+    public static boolean hasLocation = false;
 
     @Override
     public View onCreateView(LayoutInflater inflater,
@@ -116,7 +116,7 @@ public class PersonalPageFragment extends Fragment {
 
                 final Map<String, String> map = new HashMap<String, String>();
                 map.put(bookmarkEntry.COL_BUSID, busID);
-                map.put(bookmarkEntry.COL_BUSSERVICES, services);
+                map.put(bookmarkEntry.COL_SERVS, services);
 
                 Uri uri = Utility.buildUri(Utility.URI_BUS, map);
 

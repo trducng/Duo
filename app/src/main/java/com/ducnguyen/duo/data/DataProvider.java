@@ -84,6 +84,7 @@ public class DataProvider extends ContentProvider {
 
     @Override
     public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+
         Cursor reCursor;
 
         switch(mUriMatcher.match(uri)) {
@@ -159,6 +160,7 @@ public class DataProvider extends ContentProvider {
         }
 
         reCursor.setNotificationUri(getContext().getContentResolver(), uri);
+
         return reCursor;
     }
 
@@ -181,6 +183,18 @@ public class DataProvider extends ContentProvider {
                     returnUri = uri;
                 } else {
                     throw new SQLException("Failed to insert row into " + uri);
+                }
+                break;
+            }
+
+            case EACH_BUSINESS: {
+                long _id = mDatabaseOpener.getWritableDatabase().insert(
+                                DataContract.DETAILED, null, values
+                );
+                if (_id > 0) {
+                    returnUri = uri;
+                } else {
+                    throw new SQLException("Failed to insert row int " + uri);
                 }
                 break;
             }
@@ -215,6 +229,25 @@ public class DataProvider extends ContentProvider {
                 getContext().getContentResolver().notifyChange(uri, null);
                 return returnCount;
             }
+
+            case SEARCH: {
+                db.beginTransaction();
+                int returnCount = 0;
+                try {
+                    for (ContentValues value: values) {
+                        long _id = db.insert(DataContract.SEARCH, null, value);
+                        if (_id != -1) {
+                            returnCount++;
+                        }
+                    }
+                    db.setTransactionSuccessful();;
+                } finally {
+                    db.endTransaction();
+                }
+                getContext().getContentResolver().notifyChange(uri, null);
+                return returnCount;
+            }
+
             default:
                 return super.bulkInsert(uri, values);
         }
@@ -242,6 +275,12 @@ public class DataProvider extends ContentProvider {
                 rowsDeleted = db.delete(DataContract.RECOMMENDATION, selection, selectionArgs);
                 break;
             }
+
+            case SEARCH: {
+                rowsDeleted = db.delete(DataContract.SEARCH, selection, selectionArgs);
+                break;
+            }
+
             default:
                 throw new UnsupportedOperationException("Unknown uri: " + uri);
         }
@@ -303,7 +342,7 @@ public class DataProvider extends ContentProvider {
 
         // This function gets the URI and return the specific business
         String busID = DataContract.detailedEntry.getBusID(uri);
-        String condition = DataContract.detailedEntry.COLUMN_BUSID + " = ?";
+        String condition = DataContract.detailedEntry.COL_BUSID + " = ?";
 
         return mDatabaseOpener.getReadableDatabase()
                 .query(DataContract.DETAILED,

@@ -1,6 +1,8 @@
 package com.ducnguyen.duo.bus;
 
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -16,6 +18,10 @@ import com.ducnguyen.duo.data.DataContract;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by ducprogram on 3/18/16.
@@ -27,42 +33,317 @@ public class BusActivity extends AppCompatActivity {
 
     ViewPager mViewPager;
     BusActivityPagerAdapter mPagerAdapter;
-    String receivedUri = null;
+    Uri receivedUri = null;
+    String busID;
+    DownloadThread dl = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. Retrieve the uri sent by PersonalPageFragment/RecommendationPageFragment
+
+
+        // 1.a Retrieve the uri sent by PersonalPageFragment/RecommendationPageFragment
         Intent intent = getIntent();
         if (intent != null && intent.hasExtra(Intent.EXTRA_ORIGINATING_URI)) {
-            receivedUri = intent.getStringExtra(Intent.EXTRA_ORIGINATING_URI);
+            receivedUri = Uri.parse(intent.getStringExtra(Intent.EXTRA_ORIGINATING_URI));
+        }
+        String service = receivedUri.getQueryParameter(DataContract.bookmarkEntry.COL_SERVS);
+        busID = receivedUri.getQueryParameter(DataContract.bookmarkEntry.COL_BUSID);
+        String[] services = null;
+        Set<String> set_services = null;
+        if (service != null) {
+            services = service.split("-");
+            set_services = new HashSet<>(Arrays.asList(services));
+        }
+
+        Log.v(LOG_TAG, "set_services include: " + set_services.toString());
+
+        // 1.b Check if the business ID is stored in SharedPreferences
+        SharedPreferences cache = getPreferences(MODE_PRIVATE);
+        Set<String> savedID = cache.getStringSet(
+                Utility.SAVED_BUSID, null);
+        // if savedID contains real value
+        if (savedID != null) {
+            if (!savedID.contains(busID)) {
+                Set<String> toDownload = checkDownloadCache(cache,
+                        busID, set_services);
+                dl = new DownloadThread("Download data for " + busID,
+                        toDownload, busID, this);
+                dl.start();
+            }
+        } else {
+
+            Set<String> toDownload = checkDownloadCache(cache,
+                    busID, set_services);
+            if (Utility.VERBOSITY >= 2) {
+                Log.v(LOG_TAG, "toDownload is deliberately changed");
+                toDownload = new HashSet<>(
+                        Arrays.asList(Utility.TEMP_BUSID_DELIVERY,
+                                Utility.TEMP_BUSID_INFO,
+                                Utility.TEMP_BUSID_PRODUCTS,
+                                Utility.TEMP_BUSID_SCHEDULE));
+            }
+            dl = new DownloadThread("Download data for " + busID,
+                    toDownload, busID, this);
+            dl.start();
         }
 
         // 2. Set the view for activity
         setContentView(R.layout.activity_bus);
 
-        // 3. Create the adapter for page view
+        // 3. Create the adapter for ViewPager
         mPagerAdapter = new BusActivityPagerAdapter(
-                                getSupportFragmentManager(), Uri.parse(receivedUri));
+                                getSupportFragmentManager(),
+                                busID, services, dl);
 
         // 4. Find mViewPager and attach mViewPager with mPagerAdapter
         mViewPager = (ViewPager) findViewById(R.id.bus_pager);
         mViewPager.setAdapter(mPagerAdapter);
+        mViewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
 
+            @Override
+            public void onPageSelected(int position) {
+                if (dl != null) {
+                    // set priority to download this current tab,
+                    // set secondary to the next tab
+                    dl.setPriority(Utility.NAME_TO_DOWNLOAD.get(
+                            mPagerAdapter.getAllTabs().get(position)));
+                    dl.setSecondary(Utility.NAME_TO_DOWNLOAD.get(
+                            mPagerAdapter.getAllTabs().get((position + 1) %
+                            mPagerAdapter.getNumItems())));
+                    Log.v(LOG_TAG + ".DownloadThread",
+                          "The thread is alive?: " + dl.isAlive());
+                }
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+            }
+
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+//                Log.v("TEST VIEWPAGER", "onPageScrolled is called");
+            }
+        });
     }
 
+    /**
+     * This function checks if the clicked busID has which components
+     * already stored in the device to see which components need to be
+     * downloaded. It will return the components to download.
+     * @param cache         the location where cache will be stored
+     * @param busID         the busID in question
+     * @param set_services  the components that a business with busID has
+     * @return              the components to download
+     */
+    private static Set<String> checkDownloadCache(SharedPreferences cache,
+                                          String busID,
+                                          Set<String> set_services) {
+
+        Set<String> toDownload = new HashSet<>();
+
+        // check business info
+        String tempBusInfo = cache.getString(
+                Utility.TEMP_BUSID_INFO, null);
+        if (tempBusInfo != null) {
+            Utility.Name tempInfo = (Utility.Name) Utility
+                    .deserializeFromString(tempBusInfo);
+            if (tempInfo.has(busID) == -1) {
+                toDownload.add(Utility.TEMP_BUSID_INFO);
+            }
+        }
+
+        // check business products
+        String tempBusProd = cache.getString(
+                Utility.TEMP_BUSID_PRODUCTS, null);
+        if (tempBusProd != null) {
+            Utility.Name tempProd = (Utility.Name) Utility
+                    .deserializeFromString(tempBusProd);
+            if ((tempProd.has(busID) == -1) &&
+                    (set_services.contains(Utility.CODE_PRODUCTS))) {
+                toDownload.add(Utility.TEMP_BUSID_PRODUCTS);
+            }
+        }
+
+        // check business delivery
+        String tempBusDel = cache.getString(
+                Utility.TEMP_BUSID_DELIVERY, null);
+        if (tempBusDel != null) {
+            Utility.Name tempDel = (Utility.Name) Utility
+                    .deserializeFromString(tempBusDel);
+            if ((tempDel.has(busID) == -1) &&
+                    (set_services.contains(Utility.CODE_DELIVERY))) {
+                toDownload.add(Utility.TEMP_BUSID_DELIVERY);
+            }
+        }
+
+        // check business schedule
+        String tempBusSche = cache.getString(
+                Utility.TEMP_BUSID_SCHEDULE, null);
+        if (tempBusSche != null) {
+            Utility.Name tempSche = (Utility.Name) Utility
+                    .deserializeFromString(tempBusSche);
+            if ((tempSche.has(busID) == -1) &&
+                    (set_services.contains(Utility.CODE_SCHEDULE))) {
+                toDownload.add(Utility.TEMP_BUSID_SCHEDULE);
+            }
+        }
+
+        if (Utility.VERBOSITY >= 2) {
+            Log.v(LOG_TAG + ".checkDownloadCache",
+                    toDownload.toString());
+        }
+
+        return toDownload;
+    }
+
+    /**
+     * This thread is responsible for downloading the data and plug
+     * those data into SQLiteDatabase. Brief description on how
+     * this thread works:
+     *      This thread will always try to download all items in
+     * toDownload. It will prefer to download the information that
+     * has 'priority' first, then it will download 'secondary'.
+     */
+    public static class DownloadThread extends Thread {
+
+        // priority can be any of these values from Utility: TEMP_BUSID_INFO,
+        // TEMP_BUSID_PRODUCTS, TEMP_BUSID_DELIVERY, TEMP_BUSID_SCHEDULE
+        private String priority;
+        private String secondary;
+        public Set<String> toDownload;
+        public String busID;
+        public Context mContext;
+
+        public DownloadThread(String name, Set<String> toDownload,
+                              String busId, Context context) {
+            super(name);
+            this.toDownload = toDownload;
+            // priority will always be defaulted to BasicInfo
+            this.priority = Utility.TEMP_BUSID_INFO;
+            this.secondary = null;
+            this.busID = busId;
+            this.mContext = context;
+        }
+
+        @Override
+        public void run() {
+            super.run();
+            // until there is nothing to download
+            while (!toDownload.isEmpty()) {
+                String tempPriority = priority;
+                if (toDownload.contains(tempPriority)) {
+
+                    // create an appropriate URL
+                    Map<String, String> query = new HashMap<>();
+                    query.put(Utility.URI_BUSID, busID);
+                    query.put(Utility.URI_BUS_KEY, tempPriority);
+                    Uri url = Utility.buildUri(Utility.URI_BUS, query);
+
+                    // download the data and put it into the database
+                    Utility.updateDatabase(mContext, tempPriority, url);
+
+                    toDownload.remove(tempPriority);
+
+                    if (Utility.VERBOSITY >= 2) {
+                        Log.v(LOG_TAG + ".DownloadThread",
+                                "Begin to sleep 3 seconds");
+                        try {
+                            sleep(3000);
+                        } catch (InterruptedException e) {
+                            Log.e(LOG_TAG + ".DownloadThread",
+                                    "InterruptedException");
+                        }
+                    }
+
+                    if (tempPriority.equals(priority)) {
+                        // if priority hasn't changed (user doesn't view any
+                        // other tab immediately), move the secondary tab to
+                        // priority, and pick a random secondary
+                        priority = secondary;
+                        for (String each_object: toDownload) {
+                            secondary = each_object;
+                            break;
+                        }
+
+                        // if priority has changed (user views a specific tab,
+                        // we want to download that information as soon as possible
+                        // And if this is the case, both priority and secondary are
+                        // already modified so we don't need to change them
+                    }
+                } else {
+                    // just pick a random item from toDownload to download
+                    for (String each_object: toDownload) {
+
+                        // create an appropriate URL
+                        Map<String, String> query = new HashMap<>();
+                        query.put(Utility.URI_BUSID, busID);
+                        query.put(Utility.URI_BUS_KEY, each_object);
+                        Uri url = Utility.buildUri(Utility.URI_BUS, query);
+
+                        // download the data and put it into the database
+                        Utility.updateDatabase(mContext, each_object, url);
+
+                        toDownload.remove(each_object);
+
+                        if (Utility.VERBOSITY >= 2) {
+                            Log.v(LOG_TAG + ".DownloadThread",
+                                    "Begin to sleep 3 seconds");
+                            try {
+                                sleep(3000);
+                            } catch (InterruptedException e) {
+                                Log.e(LOG_TAG + ".DownloadThread",
+                                        "InterruptedException");
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            interrupt();
+        }
+
+        public void setPriority(String t) {
+            this.priority = t;
+            if (Utility.VERBOSITY >= 2) {
+                Log.v(LOG_TAG + ".DownloadThread",
+                        "Priority change to " + t);
+            }
+        }
+
+        public void setSecondary(String t) {
+            this.secondary = t;
+            if (Utility.VERBOSITY >= 2) {
+                Log.v(LOG_TAG + ".DownloadThread",
+                        "Secondary change to " + t);
+            }
+        }
+    }
+
+
+    /**
+     * This class is responsible for creating scrollable tabs in the
+     * activity. During initiation, this class requires FragmentManager
+     * (to handle creation and distribution of fragments), busID (to
+     * know which business is viewed) and ser (to know which components
+     * of the business will be viewed)
+     */
     public static class BusActivityPagerAdapter extends FragmentStatePagerAdapter {
 
         protected int NUM_ITEMS;
 
         protected ArrayList<String> ALL_TABS;
+        protected DownloadThread dl = null;
 
-        public BusActivityPagerAdapter(FragmentManager fm, Uri uri) {
+        String busId;
+
+        public BusActivityPagerAdapter(FragmentManager fm, String busId,
+                                       String[] ser, DownloadThread download) {
             super(fm);
-            String service = uri.getQueryParameter(DataContract.bookmarkEntry.COL_BUSSERVICES);
-            String[] services = null;
-            if (service != null) services = service.split("-");
+            this.busId = busId;
+            String[] services = ser;
+            this.dl = download;
             ALL_TABS = new ArrayList<>(
                     Arrays.asList(Utility.TAB_BASIC_INFO)
             );
@@ -84,14 +365,48 @@ public class BusActivity extends AppCompatActivity {
             }
 
             switch (tabTitle) {
-                case Utility.TAB_BASIC_INFO:
-                    return new BusInfoFragment();
-                case Utility.TAB_PRODUCTS:
-                    return new BusInfoFragment();
-                case Utility.TAB_DELIVERY:
-                    return new BusInfoFragment();
-                case Utility.TAB_SCHEDULE:
-                    return new BusInfoFragment();
+
+                case Utility.TAB_BASIC_INFO: {
+
+                    BusInfoFragment infoFrag = new BusInfoFragment();
+                    Bundle bundle = new Bundle();
+                    bundle.putString(Utility.URI_BUSID, busId);
+                    infoFrag.setArguments(bundle);
+
+                    return infoFrag;
+                }
+
+                case Utility.TAB_PRODUCTS: {
+
+                    BusInfoFragment infoFrag = new BusInfoFragment();
+                    Bundle bundle = new Bundle();
+                    bundle.putString(Utility.URI_BUSID, busId);
+                    infoFrag.setArguments(bundle);
+
+                    return infoFrag;
+                }
+
+                case Utility.TAB_DELIVERY: {
+
+                    BusInfoFragment infoFrag = new BusInfoFragment();
+                    Bundle bundle = new Bundle();
+                    bundle.putString(Utility.URI_BUSID, busId);
+                    infoFrag.setArguments(bundle);
+
+
+                    return infoFrag;
+                }
+
+                case Utility.TAB_SCHEDULE: {
+
+                    BusInfoFragment infoFrag = new BusInfoFragment();
+                    Bundle bundle = new Bundle();
+                    bundle.putString(Utility.URI_BUSID, busId);
+                    infoFrag.setArguments(bundle);
+
+                    return infoFrag;
+                }
+
                 default:
                     throw new UnsupportedOperationException(
                             "There is no position: " + String.valueOf(position));
@@ -106,6 +421,14 @@ public class BusActivity extends AppCompatActivity {
         @Override
         public CharSequence getPageTitle(int position) {
             return ALL_TABS.get(position);
+        }
+
+        public ArrayList<String> getAllTabs() {
+            return ALL_TABS;
+        }
+
+        public int getNumItems() {
+            return NUM_ITEMS;
         }
     }
 }

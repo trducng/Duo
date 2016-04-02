@@ -44,10 +44,10 @@ public class RecommendationPageFragment extends Fragment {
     public static final String[] TAG_COLS = {
             DataContract.recommendEntry._ID,
             DataContract.recommendEntry.COL_BUSID,
-            DataContract.recommendEntry.COL_BUSNAME,
-            DataContract.recommendEntry.COL_BUSLOCATION,
-            DataContract.recommendEntry.COL_BUSSERVICES,
-            DataContract.recommendEntry.COL_BUSCOVERIMAGE,
+            DataContract.recommendEntry.COL_NAME,
+            DataContract.recommendEntry.COL_LOC,
+            DataContract.recommendEntry.COL_SERVS,
+            DataContract.recommendEntry.COL_CIMG,
             DataContract.recommendEntry.COL_DISTANCE,
     };
 
@@ -100,7 +100,7 @@ public class RecommendationPageFragment extends Fragment {
 
                 final Map<String, String> map = new HashMap<String, String>();
                 map.put(DataContract.bookmarkEntry.COL_BUSID, busID);
-                map.put(DataContract.bookmarkEntry.COL_BUSSERVICES, services);
+                map.put(DataContract.bookmarkEntry.COL_SERVS, services);
 
                 Uri uri = Utility.buildUri(Utility.URI_BUS, map);
 

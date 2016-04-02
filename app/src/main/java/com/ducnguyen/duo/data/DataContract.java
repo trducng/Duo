@@ -5,6 +5,8 @@ import android.net.Uri;
 import android.provider.BaseColumns;
 import android.text.TextUtils;
 
+import com.ducnguyen.duo.Utility;
+
 /**
  * Created by ducnguyen on 3/7/16.
  * This class defines the contract between the application
@@ -51,13 +53,13 @@ public class DataContract {
 
         // Constants for each columns
         public static final String COL_TAG = "tag";
-        public static final String COL_BUSID = "busID";
-        public static final String COL_BUSNAME = "busName";
-        public static final String COL_BUSLOCATION = "busLocation";
-        public static final String COL_BUSSERVICES = "busServices";
-        public static final String COL_BUSCOVERIMAGE = "busCovImage";
-        public static final String COL_LATITUDE = "lat";
-        public static final String COL_LONGITUDE = "long";
+        public static final String COL_BUSID = Utility.COL_BUSID;
+        public static final String COL_NAME = Utility.COL_BUSNAME;
+        public static final String COL_LOC = Utility.COL_BUSLOCATION;
+        public static final String COL_SERVS = Utility.COL_BUSSERVICES;
+        public static final String COL_CIMG = Utility.COL_BUSCOVIMG;
+        public static final String COL_LAT = "lat";
+        public static final String COL_LONG = "long";
         public static final String COL_TIMEADDED = "timeAdded";
 
         public static final String selecTags =
@@ -153,18 +155,17 @@ public class DataContract {
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
                 + PACKAGE_NAME + "/" + DETAILED;
 
-        public static final String COLUMN_SAVED = "colSaved";
-        public static final String COLUMN_BUSID = "busID";
-        public static final String COLUMN_BUSNAME = "busName";
-        public static final String COLUMN_BUSPHONE = "busPhone";
-        public static final String COLUMN_BUSLOCATION = "busLocation";
-        public static final String COLUMN_BUSWEB = "busWeb";
-        public static final String COLUMN_BUSEMAIL = "busEmail";
-        public static final String COLUMN_BUSMESS = "busMess";
-        public static final String COLUMN_BUSSERVICES = "busServices";
-        public static final String COLUMN_BUSCOVERIMAGE = "busCovImage";
-        public static final String COLUMN_BUSTEST = "busTestimonials";
-        public static final String COLUMN_BUSNEWS = "busNews";
+        public static final String COL_SAVED = "saved";
+        public static final String COL_BUSID = Utility.COL_BUSID;
+        public static final String COL_NAME = Utility.COL_BUSNAME;
+        public static final String COL_SHORTLOC = "shortLocation";
+        public static final String COL_OPEN = "open";
+        public static final String COL_LOC = Utility.COL_BUSLOCATION;
+        public static final String COL_CONTACT = "contact";
+        public static final String COL_IMG = "img";
+        public static final String COL_HOURS = "hours";
+        public static final String COL_NEWS = "news";
+        public static final String COL_LOY = "loyalty";
 
         public static Uri buildDetailedURI(String busID) {
 
@@ -196,12 +197,12 @@ public class DataContract {
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
                 + PACKAGE_NAME + "/" + PRODUCTS;
 
-        public static final String COLUMN_ITEMID = "itemID";
-        public static final String COLUMN_ITEMNAME = "itemName";
-        public static final String COLUMN_ITEMINFO = "itemInfo";
-        public static final String COLUMN_CURRENCY = "currency";
-        public static final String COLUMN_ITEMPRICE = "itemPrice";
-        public static final String COLUMN_ITEMIMAGE = "itemImg";
+        public static final String COL_ITEMID = "itemID";
+        public static final String COL_ITEMNAME = "itemName";
+        public static final String COL_ITEMINFO = "itemInfo";
+        public static final String COL_CURRENCY = "currency";
+        public static final String COL_ITEMPRICE = "itemPrice";
+        public static final String COL_ITEMIMG = "itemImg";
 
         public static Uri buildURI(String busID) {
 
@@ -239,11 +240,11 @@ public class DataContract {
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
                         + PACKAGE_NAME + "/" + TESTIMONIALS;
 
-        public static final String COLUMN_COMTER = "commenter";
-        public static final String COLUMN_COMTDETAIL = "comtDet";
-        public static final String COLUMN_COMTDATE = "comtDate";
-        public static final String COLUMN_REC = "rec";
-        public static final String COLUMN_BUSID = "busID";
+        public static final String COL_COMTER = "commenter";
+        public static final String COL_COMTDETAIL = "comtDet";
+        public static final String COL_COMTDATE = "comtDate";
+        public static final String COL_REC = "rec";
+        public static final String COL_BUSID = Utility.COL_BUSID;
 
         public static Uri buildURI(String busID) {
 
@@ -282,11 +283,11 @@ public class DataContract {
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
                 + PACKAGE_NAME + "/" + LOYALTY;
 
-        public static final String COLUMN_BUSID = "busID";
-        public static final String COLUMN_BUSNAME = "busName";
-        public static final String COLUMN_BUSCOVERIMGAGE = "busCovImg";
-        public static final String COLUMN_CURPOINT = "curPoint";
-        public static final String COLUMN_LOYALTYDETAIL = "loDet";
+        public static final String COL_BUSID = Utility.COL_BUSID;
+        public static final String COL_NAME = Utility.COL_BUSNAME;
+        public static final String COL_CIMG = Utility.COL_BUSCOVIMG;
+        public static final String COL_CURPOINT = "curPoint";
+        public static final String COL_LOYALDETAIL = "loDet";
 
         public static Uri buildURI() {
 
@@ -309,11 +310,12 @@ public class DataContract {
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
                 + PACKAGE_NAME + "/" + SEARCH;
 
-        public static final String COLUMN_BUSID = "busID";
-        public static final String COLUMN_BUSNAME = "busName";
-        public static final String COLUMN_BUSLOCATION = "busLocation";
-        public static final String COLUMN_BUSSERVICES = "busServices";
-        public static final String COLUMN_BUSCOVERIMAGE = "busCovImage";
+        public static final String COL_BUSID = Utility.COL_BUSID;
+        public static final String COL_NAME = Utility.COL_BUSNAME;
+        public static final String COL_LOC = Utility.COL_BUSLOCATION;
+        public static final String COL_SERVS = Utility.COL_BUSSERVICES;
+        public static final String COL_CIMG = Utility.COL_BUSCOVIMG;
+        public static final String COL_DISTANCE = "dis";
 
         public static Uri buildURI() {
 
@@ -335,11 +337,11 @@ public class DataContract {
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
                 + PACKAGE_NAME + "/" + RECOMMENDATION;
 
-        public static final String COL_BUSID = "busID";
-        public static final String COL_BUSNAME = "busName";
-        public static final String COL_BUSLOCATION = "busLocation";
-        public static final String COL_BUSSERVICES = "busServices";
-        public static final String COL_BUSCOVERIMAGE = "busCovImage";
+        public static final String COL_BUSID = Utility.COL_BUSID;
+        public static final String COL_NAME = Utility.COL_BUSNAME;
+        public static final String COL_LOC = Utility.COL_BUSLOCATION;
+        public static final String COL_SERVS = Utility.COL_BUSSERVICES;
+        public static final String COL_CIMG = Utility.COL_BUSCOVIMG;
         public static final String COL_DISTANCE = "dis";
 
         public static Uri buildURI() {
@@ -362,10 +364,10 @@ public class DataContract {
                 ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
                         + PACKAGE_NAME + "/" + EVENTS;
 
-        public static final String COL_BUSID = "busID";
-        public static final String COL_BUSNAME = "busName";
+        public static final String COL_BUSID = Utility.COL_BUSID;
+        public static final String COL_NAME = Utility.COL_BUSNAME;
         public static final String COL_BUSEVENT = "busEvent";
-        public static final String COL_BUSLOCATION = "busLoc";
+        public static final String COL_LOC = Utility.COL_BUSLOCATION;
 
         public static Uri buildURI() {
 

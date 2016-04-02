@@ -1,12 +1,12 @@
-package com.ducnguyen.duo.home;
+package com.ducnguyen.duo.search;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.support.v4.widget.CursorAdapter;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CursorAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -14,27 +14,28 @@ import com.ducnguyen.duo.R;
 import com.ducnguyen.duo.Utility;
 
 /**
- * Created by ducprogram on 3/18/16.
+ * Created by ducprogram on 4/1/16.
  */
-public class RecommendationPageAdapter extends CursorAdapter {
+public class SearchAdapter extends CursorAdapter {
 
-    public final String LOG_TAG = RecommendationPageAdapter.class.getSimpleName();
+    private final String LOG_TAG = SearchAdapter.class.getSimpleName();
 
-    public RecommendationPageAdapter(Context context, Cursor cursor, int flags) {
-        super(context, cursor, 0);
+    public SearchAdapter(Context context, Cursor cursor, int flags) {
+        super(context, cursor, flags);
 
         if (Utility.VERBOSITY >= 1) {
-            Log.v(LOG_TAG, LOG_TAG + " is created with "
-                    + String.valueOf(cursor.getCount()) + " rows");
+            Log.v(LOG_TAG, LOG_TAG + " is created");
         }
     }
 
     @Override
     public View newView(Context context, Cursor cursor, ViewGroup parent) {
         View view = LayoutInflater.from(context).inflate(
-                R.layout.item_home_recommendation,
+                R.layout.item_search,
                 parent,
                 false);
+
+        Log.v(LOG_TAG, "newView created");
 
         view.setTag(new AllViews(view));
 
@@ -44,25 +45,27 @@ public class RecommendationPageAdapter extends CursorAdapter {
     @Override
     public void bindView(View view, Context context, Cursor cursor) {
 
+        Log.v(LOG_TAG, "bindView created");
+
         // Get tag
         AllViews allViews = (AllViews) view.getTag();
         // Get the busID
-        String busId = cursor.getString(RecommendationPageFragment.COL_BUSID);
+        String busId = cursor.getString(SearchFragment.COL_BUSID);
 
         // Set bus name, bus location, image, bus services, and distance
-        String busName = cursor.getString(RecommendationPageFragment.COL_BUSNAME);
+        String busName = cursor.getString(SearchFragment.COL_BUSNAME);
         allViews.busName.setText(busName);
 
-        String busLocation = cursor.getString(RecommendationPageFragment.COL_BUSLOCATION);
+        String busLocation = cursor.getString(SearchFragment.COL_BUSLOCATION);
         allViews.busAdd.setText(busLocation);
 
-        String busImage = cursor.getString(RecommendationPageFragment.COL_BUSCOVERIMAGE);
-        new Utility.ImageViewURL(mContext, allViews.busImage, busId,
-                Utility.URI_RECOMMEND, Utility.getFileType(busImage))
+        String busImage = cursor.getString(SearchFragment.COL_BUSCOVERIMAGE);
+        new Utility.ImageViewURL(context, allViews.busImage, busId,
+                Utility.URI_SEARCH, Utility.getFileType(busImage))
                 .execute(busImage);
 
         String[] busServices = cursor
-                .getString(RecommendationPageFragment.COL_BUSSERVICES)
+                .getString(SearchFragment.COL_BUSSERVICES)
                 .split(",");
         for (String eachService : busServices) {
             if (eachService.equals(Utility.CODE_MESSAGE)) {
@@ -74,7 +77,7 @@ public class RecommendationPageAdapter extends CursorAdapter {
             }
         }
 
-        double distance = cursor.getDouble(RecommendationPageFragment.COL_DISTANCE);
+        double distance = cursor.getDouble(SearchFragment.COL_DISTANCE);
         allViews.distance.setText(Utility.formatKM(distance));
 
     }
@@ -94,19 +97,19 @@ public class RecommendationPageAdapter extends CursorAdapter {
         public AllViews(View view) {
 
             busImage = (ImageView) view.findViewById(
-                    R.id.imageview_home_recommendation_ava);
+                    R.id.imageview_search_ava);
             busName = (TextView) view.findViewById(
-                    R.id.textview_home_recommendation_busname);
+                    R.id.textview_search_busname);
             busAdd = (TextView) view.findViewById(
-                    R.id.textview_home_recommendation_busaddress);
+                    R.id.textview_search_busaddress);
             messImage = (ImageView) view.findViewById(
-                    R.id.imageview_home_recommendation_message);
+                    R.id.imageview_search_message);
             delImage = (ImageView) view.findViewById(
-                    R.id.imageview_home_recommendation_delivery);
+                    R.id.imageview_search_delivery);
             scheImage = (ImageView) view.findViewById(
-                    R.id.imageview_home_recommendation_schedule);
+                    R.id.imageview_search_schedule);
             distance = (TextView) view.findViewById(
-                    R.id.textview_home_recommendation_distance);
+                    R.id.textview_search_distance);
         }
     }
 }

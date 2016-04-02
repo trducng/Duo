@@ -21,7 +21,7 @@ import com.ducnguyen.duo.data.DataContract.recommendEntry;
  */
 public class DatabaseOpener extends SQLiteOpenHelper {
 
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 5;
 
     static final String DATABASE_NAME = "duo.db";
 
@@ -43,52 +43,52 @@ public class DatabaseOpener extends SQLiteOpenHelper {
                 + bookmarkEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + bookmarkEntry.COL_TAG + " TEXT NOT NULL, "
                 + bookmarkEntry.COL_BUSID + " TEXT NOT NULL, "
-                + bookmarkEntry.COL_BUSNAME + " TEXT NOT NULL, "
-                + bookmarkEntry.COL_BUSLOCATION + " TEXT NOT NULL, "
-                + bookmarkEntry.COL_BUSSERVICES + " TEXT, "
-                + bookmarkEntry.COL_BUSCOVERIMAGE + " TEXT, "
+                + bookmarkEntry.COL_NAME + " TEXT NOT NULL, "
+                + bookmarkEntry.COL_LOC + " TEXT NOT NULL, "
+                + bookmarkEntry.COL_SERVS + " TEXT, "
+                + bookmarkEntry.COL_CIMG + " TEXT, "
                 // TODO: COL_TIMEADDED should be " INTEGER NOT NULL "
                 // change to TEXT NOT NULL just for testing
-                + bookmarkEntry.COL_LATITUDE + " REAL NOT NULL, "
-                + bookmarkEntry.COL_LONGITUDE + " REAL NOT NULL, "
+                + bookmarkEntry.COL_LAT + " REAL NOT NULL, "
+                + bookmarkEntry.COL_LONG + " REAL NOT NULL, "
                 + bookmarkEntry.COL_TIMEADDED + " TEXT NOT NULL "
                 + " );";
 
         // Create business table
         final String SQL_CREATE_DETAILED_TABLE = "CREATE TABLE "
                 + DataContract.DETAILED + " ("
-                + detailedEntry.COLUMN_SAVED + " TEXT NOT NULL, "
-                + detailedEntry.COLUMN_BUSID + " TEXT UNIQUE NOT NULL, "
-                + detailedEntry.COLUMN_BUSNAME + " TEXT NOT NULL, "
-                + detailedEntry.COLUMN_BUSPHONE + " TEXT, "
-                + detailedEntry.COLUMN_BUSWEB + " TEXT, "
-                + detailedEntry.COLUMN_BUSLOCATION + " TEXT NOT NULL, "
-                + detailedEntry.COLUMN_BUSEMAIL + " TEXT, "
-                + detailedEntry.COLUMN_BUSMESS + " TEXT NOT NULL, "
-                + detailedEntry.COLUMN_BUSSERVICES + " TEXT NOT NULL, "
-                + detailedEntry.COLUMN_BUSCOVERIMAGE + " TEXT NOT NULL, "
-                + detailedEntry.COLUMN_BUSTEST + " TEXT NOT NULL, "
-                + detailedEntry.COLUMN_BUSNEWS + " TEXT "
+                + detailedEntry.COL_SAVED + " TEXT NOT NULL, "
+                + detailedEntry.COL_BUSID + " TEXT UNIQUE NOT NULL, "
+                + detailedEntry.COL_NAME + " TEXT NOT NULL, "
+                + detailedEntry.COL_SHORTLOC + " TEXT, "
+                + detailedEntry.COL_LOC + " TEXT, "
+                + detailedEntry.COL_OPEN + " TEXT NOT NULL, "
+                + detailedEntry.COL_CONTACT + " TEXT, "
+                + detailedEntry.COL_IMG + " TEXT NOT NULL, "
+                + detailedEntry.COL_HOURS + " TEXT NOT NULL, "
+                + detailedEntry.COL_NEWS + " TEXT NOT NULL, "
+                + detailedEntry.COL_LOY + " TEXT NOT NULL "
                 + " );";
 
         // Create loyalty table
         final String SQL_CREATE_LOYALTY_TABLE = "CREATE TABLE "
-                + loyaltyEntry.COLUMN_BUSCOVERIMGAGE + " TEXT, "
-                + loyaltyEntry.COLUMN_BUSID + " TEXT NOT NULL, "
-                + loyaltyEntry.COLUMN_BUSNAME + " TEXT NOT NULL, "
-                + loyaltyEntry.COLUMN_CURPOINT + " INTEGER NOT NULL, "
-                + loyaltyEntry.COLUMN_LOYALTYDETAIL + " TEXT NOT NULL "
+                + loyaltyEntry.COL_CIMG + " TEXT, "
+                + loyaltyEntry.COL_BUSID + " TEXT NOT NULL, "
+                + loyaltyEntry.COL_NAME + " TEXT NOT NULL, "
+                + loyaltyEntry.COL_CURPOINT + " INTEGER NOT NULL, "
+                + loyaltyEntry.COL_LOYALDETAIL + " TEXT NOT NULL "
                 + ");";
 
         // Create search table
         final String SQL_CREATE_SEARCH_TABLE = "CREATE TABLE "
                 + DataContract.SEARCH + " ("
                 + searchEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + searchEntry.COLUMN_BUSID + " TEXT NOT NULL, "
-                + searchEntry.COLUMN_BUSNAME + " TEXT NOT NULL, "
-                + searchEntry.COLUMN_BUSLOCATION + " TEXT NOT NULL, "
-                + searchEntry.COLUMN_BUSSERVICES + " TEXT NOT NULL, "
-                + searchEntry.COLUMN_BUSCOVERIMAGE + " TEXT NOT NULL "
+                + searchEntry.COL_BUSID + " TEXT NOT NULL, "
+                + searchEntry.COL_NAME + " TEXT NOT NULL, "
+                + searchEntry.COL_LOC + " TEXT NOT NULL, "
+                + searchEntry.COL_SERVS + " TEXT NOT NULL, "
+                + searchEntry.COL_CIMG + " TEXT NOT NULL, "
+                + searchEntry.COL_DISTANCE + " REAL NOT NULL "
                 + ");";
 
         // Create recommendation table
@@ -96,10 +96,10 @@ public class DatabaseOpener extends SQLiteOpenHelper {
                 + DataContract.RECOMMENDATION + " ("
                 + recommendEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + recommendEntry.COL_BUSID + " TEXT NOT NULL, "
-                + recommendEntry.COL_BUSNAME + " TEXT NOT NULL, "
-                + recommendEntry.COL_BUSLOCATION + " TEXT NOT NULL, "
-                + recommendEntry.COL_BUSSERVICES + " TEXT NOT NULL, "
-                + recommendEntry.COL_BUSCOVERIMAGE + " TEXT NOT NULL, "
+                + recommendEntry.COL_NAME + " TEXT NOT NULL, "
+                + recommendEntry.COL_LOC + " TEXT NOT NULL, "
+                + recommendEntry.COL_SERVS + " TEXT NOT NULL, "
+                + recommendEntry.COL_CIMG + " TEXT NOT NULL, "
                 + recommendEntry.COL_DISTANCE + " REAL NOT NULL "
                 + ");";
 
@@ -108,9 +108,9 @@ public class DatabaseOpener extends SQLiteOpenHelper {
                 + DataContract.EVENTS + " ("
                 + eventsEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                 + eventsEntry.COL_BUSID + " TEXT NOT NULL, "
-                + eventsEntry.COL_BUSNAME + " TEXT NOT NULL, "
+                + eventsEntry.COL_NAME + " TEXT NOT NULL, "
                 + eventsEntry.COL_BUSEVENT + " TEXT NOT NULL, "
-                + eventsEntry.COL_BUSLOCATION + " TEXT NOT NULL "
+                + eventsEntry.COL_LOC + " TEXT NOT NULL "
                 + ");";
 
 //        // Create the tables
@@ -154,12 +154,12 @@ public class DatabaseOpener extends SQLiteOpenHelper {
         final String SQL_CREATE_PRODUCTS_TABLE = "CREATE TABLE IF NOT EXISTS "
                 + tableName + " ("
                 + productsEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + productsEntry.COLUMN_ITEMID + " TEXT NOT NULL, "
-                + productsEntry.COLUMN_ITEMNAME + " TEXT NOT NULL, "
-                + productsEntry.COLUMN_ITEMINFO + " TEXT, "
-                + productsEntry.COLUMN_CURRENCY + " TEXT, "
-                + productsEntry.COLUMN_ITEMPRICE + " REAL, "
-                + productsEntry.COLUMN_ITEMIMAGE + " TEXT "
+                + productsEntry.COL_ITEMID + " TEXT NOT NULL, "
+                + productsEntry.COL_ITEMNAME + " TEXT NOT NULL, "
+                + productsEntry.COL_ITEMINFO + " TEXT, "
+                + productsEntry.COL_CURRENCY + " TEXT, "
+                + productsEntry.COL_ITEMPRICE + " REAL, "
+                + productsEntry.COL_ITEMIMG + " TEXT "
                 + ");";
 
         SQLiteDatabase db = getWritableDatabase();
@@ -182,11 +182,11 @@ public class DatabaseOpener extends SQLiteOpenHelper {
         final String SQL_CREATE_TESTIMONIALS_TABLE = "CREATE TABLE IF NOT EXISTS "
                 + tableName + " ("
                 + testimonialsEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
-                + testimonialsEntry.COLUMN_COMTER + " TEXT NOT NULL, "
-                + testimonialsEntry.COLUMN_COMTDETAIL + " TEXT NOT NULL, "
-                + testimonialsEntry.COLUMN_COMTDATE + " INTEGER NOT NULL, "
-                + testimonialsEntry.COLUMN_REC + " INTEGER NOT NULL, "
-                + testimonialsEntry.COLUMN_BUSID + " TEXT NOT NULL "
+                + testimonialsEntry.COL_COMTER + " TEXT NOT NULL, "
+                + testimonialsEntry.COL_COMTDETAIL + " TEXT NOT NULL, "
+                + testimonialsEntry.COL_COMTDATE + " INTEGER NOT NULL, "
+                + testimonialsEntry.COL_REC + " INTEGER NOT NULL, "
+                + testimonialsEntry.COL_BUSID + " TEXT NOT NULL "
                 + ");";
 
         SQLiteDatabase db = getWritableDatabase();

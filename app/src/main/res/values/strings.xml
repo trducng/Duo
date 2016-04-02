@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">Duo</string>
     <string name="package_name">com.ducnguyen.duo</string>
+
+    <!-- Search string -->
+    <string name="search_hint">That nice dress&#8230;</string>
+
 </resources>

@@ -12,10 +12,10 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Base64;
 import android.util.Log;
 import android.widget.ImageView;
 
-import com.ducnguyen.duo.bus.BusInfoFragment;
 import com.ducnguyen.duo.data.DataContract;
 import com.ducnguyen.duo.data.DatabaseOpener;
 import com.firebase.client.AuthData;
@@ -27,12 +27,17 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -50,7 +55,8 @@ public class Utility {
     // Verbosity <= 0: does not print anything
     // Verbosity == 1: print check-mark log (to see whether execution reaches that line of code)
     // Verbosity == 2: print example output (such as uri, string result)
-    public static final int VERBOSITY = 10;
+    // Verbosity == 3: print periodical updates (such as location update)
+    public static final int VERBOSITY = 2;
 
     // LOG_TAG will be as category name in Log output
     public static final String LOG_TAG = Utility.class.getSimpleName();
@@ -64,6 +70,15 @@ public class Utility {
     public static final String URI_LATITUDE = "lat";
     public static final String URI_LONGITUDE = "long";
     public static final String URI_TIME = "time";
+    // business url query parameters
+    public static final String URI_BUSID = "busID";
+    public static final String URI_BUS_KEY = "type";
+    public static final String URI_INFO = "info";
+    public static final String URI_PRODUCTS = "prods";
+    public static final String URI_SCHEDULE = "sche";
+    public static final String URI_DELIVERY = "del";
+    // search url query parameters
+    public static final String URI_SEARCH_QUERY = "query";
 
     // these will be the code stored in JSON delivered from server
     public static final String CODE_MESSAGE = "message";
@@ -77,6 +92,23 @@ public class Utility {
     public static final String TAB_DELIVERY = "Delivery";
     public static final String TAB_SCHEDULE = "Reservation";
 
+    // these are the name for database columns that have the same name
+    public static final String COL_BUSID = URI_BUSID;
+    public static final String COL_BUSNAME = "busName";
+    public static final String COL_BUSLOCATION = "loc";
+    public static final String COL_BUSSERVICES = "ser";
+    public static final String COL_BUSCOVIMG = "covImg";
+
+    // these are the keys in SharedPreferences
+    public static final String SAVED_BUSID = "saved";
+    public static final String TEMP_BUSID_INFO = URI_INFO;
+    public static final String TEMP_BUSID_PRODUCTS = URI_PRODUCTS;
+    public static final String TEMP_BUSID_DELIVERY = URI_DELIVERY;
+    public static final String TEMP_BUSID_SCHEDULE = URI_SCHEDULE;
+    public static final String TEMP_LAT = URI_LATITUDE;
+    public static final String TEMP_LONG = URI_LONGITUDE;
+
+
     // this HashMap maps code with the appropriate name
     public static final HashMap<String, String> CODE_TO_NAME = new HashMap<String, String>();
     static {
@@ -86,20 +118,24 @@ public class Utility {
     };
 
     // this HashMap maps tab item with the appropriate fragment -- this might not needed
-    public static final Map<String, Class> NAME_TO_FRAGMENT = new HashMap<String, Class>();
+    public static final Map<String, String> NAME_TO_DOWNLOAD = new HashMap<>();
     static {
-                        NAME_TO_FRAGMENT.put(TAB_BASIC_INFO, BusInfoFragment.class);
-                        NAME_TO_FRAGMENT.put(TAB_PRODUCTS, BusInfoFragment.class);
-                        NAME_TO_FRAGMENT.put(TAB_DELIVERY, BusInfoFragment.class);
-                        NAME_TO_FRAGMENT.put(TAB_SCHEDULE, BusInfoFragment.class);
+                        NAME_TO_DOWNLOAD.put(TAB_BASIC_INFO, TEMP_BUSID_INFO);
+                        NAME_TO_DOWNLOAD.put(TAB_PRODUCTS, TEMP_BUSID_PRODUCTS);
+                        NAME_TO_DOWNLOAD.put(TAB_DELIVERY, TEMP_BUSID_DELIVERY);
+                        NAME_TO_DOWNLOAD.put(TAB_SCHEDULE, TEMP_BUSID_SCHEDULE);
     };
 
     /**
      * This function builds the appropriate URI to request update to the server
      * considering the type of request:
      *      - recommendation: <URL_BASE>/<URL_RECOMMEND>?lat=lat&loc=loc&time=time
-     *      - search: <URL_BASE>/<URL_SEARCH>?query=query
+     *      - search: <URL_BASE>/<URL_SEARCH>?query=query?lat=lat&loc=loc
      *      - view business: <URL_BASE>/<URL_BUS>?busID=busID&busServices=a,b,c
+     *      - download business info: <URL_BASE>/<URL_BUS>?busID=busID&type=<URL_INFO>
+     *      - download business product: <URL_BASE>/<URL_BUS>?busID=busID&type=<URL_PRODUCTS>
+     *      - download business delivery: <URL_BASE>/<URL_BUS>?busID=busID&type=<URL_DELIVERY>
+     *      - download business schedule: <URL_BASE>/<URL_BUS>?busID=busID&type=<URL_SCHEDULE>
      * @param data      pair of key-value to be included in the URI (?key=value)
      * @return
      */
@@ -108,15 +144,13 @@ public class Utility {
         Uri.Builder query = Uri.parse(URI_BASE).buildUpon();
         Iterator iterator = data.entrySet().iterator();
 
-        if (type.equals(URI_RECOMMEND)) {
-            query.appendPath(URI_RECOMMEND);
+        if (type.equals(URI_RECOMMEND) || type.equals(URI_SEARCH)) {
+            query.appendPath(type);
             while (iterator.hasNext()) {
                 Map.Entry pair = (Map.Entry) iterator.next();
                 query.appendQueryParameter((String) pair.getKey(), (String) pair.getValue());
             }
-        }
-
-        if (type.equals(URI_BUS)) {
+        } else if (type.equals(URI_BUS)) {
             query.appendPath(URI_BUS);
             while (iterator.hasNext()) {
                 Map.Entry pair = (Map.Entry) iterator.next();
@@ -136,6 +170,14 @@ public class Utility {
         return query.build();
     }
 
+
+    /**
+     * This function gets the filetype of a particular file in a particular link.
+     * For example if the links is www.abc.com/this/is/an/image.pdf, then it will
+     * return filetype as pdf
+     * @param url   the link
+     * @return      the filetype
+     */
     public static String getFileType(String url) {
         String[] paths = url.split("\\.");
         return paths[paths.length - 1];
@@ -182,6 +224,8 @@ public class Utility {
                         + String.valueOf(location.getLongitude())
                         + " longitude.");
             }
+
+
 
         }
 
@@ -235,12 +279,6 @@ public class Utility {
 
                 Uri query = buildUri(URI_RECOMMEND, userLoc);
 
-                // For test purpose only, comment out when done
-                query = Uri.parse("https://www.dropbox.com/s/6hmu5ekt4ntx46t/rec.json?dl=1");
-
-                if (VERBOSITY >= 2) {
-                    Log.v("LOCATION Uri", String.valueOf(query));
-                }
 //                updateDatabase(mContext, mType, query);
 
                 new UpdateDatabase(mContext, query, mType).execute();
@@ -264,14 +302,27 @@ public class Utility {
     }
 
 
-    // This function converts degrees to radians to get the distance
+    /**
+     * This function converts degrees to radians (which will be used to plug
+     * into distance equation to get the distance between two pair lat-longs)
+     * @param degree    the lat, long angle in degree
+     * @return          the lat, long angle in radian
+     */
     public static double toRadians(double degree) {
         return degree * (Math.PI) / 180;
     }
 
-    // This function calculates the distance between two points, based on their
-    // respective latitudes and longitudes
-    // The latitudes and longitudes used in this function are radians
+
+    /**
+     * This function calculates the distance between two points, based on their
+     * respective latitudes and longitudes. The latitudes and longitudes used
+     * in this function are radians
+     * @param lat1      the radians latitude of first location
+     * @param long1     the radians longitude of first location
+     * @param lat2      the radians latitude of second location
+     * @param long2     the radians longitude of second location
+     * @return          the distance between two locations in km
+     */
     public static double getDistance(double lat1, double long1,
                                      double lat2, double long2) {
 
@@ -285,7 +336,15 @@ public class Utility {
         return c * 6371;
     }
 
-
+    /**
+     * This function formats the distance from getDistance(double, double,
+     * double, double) with appropriate notation. More specifically, if
+     * the distance is below < 10km, it will have format a.b km, if the
+     * distance is below < 100km, it will have format ab.c km, if the distance
+     * is larger than 100km, it will have format abc km
+     * @param distance  the distance between two locations (from getDistance)
+     * @return          the human friendly representation of the distance in km
+     */
     public static String formatKM(double distance) {
         if (distance < 10) {
             String phrase = String.valueOf(distance);
@@ -492,6 +551,7 @@ public class Utility {
     /**
      * This function takes an URI to fetch data and then automatically insert
      * that data to the right SQLiteDatabase table.
+     * TODO: when working with products and schedule tables.., consider reduce this function code
      * @param context   the context of the application when this
      * @param type      the type of request: URI_SEARCH, URI_RECOMMEND or URI_BUS
      * @param uri       the uri to connect to server
@@ -499,6 +559,7 @@ public class Utility {
     public static void updateDatabase(Context context, String type, Uri uri) {
 
         if (type.equals(URI_RECOMMEND)) {
+            uri = Uri.parse("https://www.dropbox.com/s/6hmu5ekt4ntx46t/rec.json?dl=1");
             String result = sendHTTPRequest(uri);
             Vector<ContentValues> data;
             try {
@@ -523,12 +584,118 @@ public class Utility {
             } catch (JSONException e) {
                 Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
             }
-        }
+        } else if (type.equals(URI_SEARCH)) {
+            uri = Uri.parse("https://www.dropbox.com/s/qf4dr5ywlhp76ke/search.json?dl=1");
+            String result = sendHTTPRequest(uri);
+            Vector<ContentValues> data;
+            try {
+                data = getDataFromJSON(result);
+                if (data.size() > 0) {
+                    ContentValues[] insertData = new ContentValues[data.size()];
+                    data.toArray(insertData);
 
+                    // Delete the old data here to avoid building up data
+                    // TODO: delete indiscriminately here and onBackPressed();
+                    context.getContentResolver().delete(
+                            DataContract.searchEntry.buildURI(),
+                            null, null
+                    );
+
+                    // Bulk insert the new data
+                    int test = context.getContentResolver().bulkInsert(
+                            DataContract.searchEntry.buildURI(),
+                            insertData
+                    );
+
+                }
+
+            } catch (JSONException e) {
+                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
+            }
+        }
+//        } else if (type.equals(URI_INFO)) {
+//            String busID = uri.getQueryParameter(URI_BUSID);
+//            String result = sendHTTPRequest(uri);
+//            Vector<ContentValues> data;
+//            try {
+//                data = getDataFromJSON(result);
+//
+//                // since it retrieves specific business, data length should always be 1
+//                if (data.size() == 1) {
+//                    ContentValues insertData = data.get(0);
+//                    context.getContentResolver().insert(
+//                            DataContract.detailedEntry.buildDetailedURI(busID),
+//                            insertData
+//                    );
+//                }
+//            } catch (JSONException e) {
+//                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
+//            }
+//        } else if (type.equals(URI_PRODUCTS)) {
+//            String busID = uri.getQueryParameter(URI_BUSID);
+//            String result = sendHTTPRequest(uri);
+//            Vector<ContentValues> data;
+//            try {
+//                data = getDataFromJSON(result);
+//
+//                // since it retrieves specific business, data length should always be 1
+//                if (data.size() > 0) {
+//                    ContentValues insertData = data.get(0);
+//                    context.getContentResolver().insert(
+//                            DataContract.productsEntry.buildURI(busID),
+//                            insertData
+//                    );
+//                }
+//            } catch (JSONException e) {
+//                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
+//            }
+//        } else if (type.equals(URI_DELIVERY)) {
+//            String busID = uri.getQueryParameter(URI_BUSID);
+//            String result = sendHTTPRequest(uri);
+//            Vector<ContentValues> data;
+//            try {
+//                data = getDataFromJSON(result);
+//
+//                // since it retrieves specific business, data length should always be 1
+//                if (data.size() > 0) {
+//                    ContentValues insertData = data.get(0);
+//                    context.getContentResolver().insert(
+//                            DataContract.productsEntry.buildURI(busID),
+//                            insertData
+//                    );
+//                }
+//            } catch (JSONException e) {
+//                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
+//            }
+//        } else if (type.equals(URI_SCHEDULE)) {
+//            String busID = uri.getQueryParameter(URI_BUSID);
+//            String result = sendHTTPRequest(uri);
+//            Vector<ContentValues> data;
+//            try {
+//                data = getDataFromJSON(result);
+//
+//                // since it retrieves specific business, data length should always be 1
+//                if (data.size() > 0) {
+//                    ContentValues insertData = data.get(0);
+//                    context.getContentResolver().insert(
+//                            DataContract.productsEntry.buildURI(busID),
+//                            insertData
+//                    );
+//                }
+//            } catch (JSONException e) {
+//                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
+//            }
+//        }
     }
 
 
-    // This helper functions help delete file in the internal storage
+    /**
+     * This helper function helps delete file that has the name <fileName> in
+     * the internal storage.
+     * @param context   the context from which this function is called
+     * @param fileName  the name of the file to be deleted (with proper extension)
+     * @return          true if the file is deleted and false otherwise
+     */
     public static boolean deleteFile(Context context, String fileName) {
         File dir = context.getFilesDir();
         File file = new File(dir, fileName);
@@ -641,14 +808,14 @@ public class Utility {
     }
 
 
-
-
-
-    // The below functions and classes are for testing and development purposes
-    private static class Name {
-
-        // This class serves as a simple Queue to keep track
-        // of the current temporarily viewed business
+    /**
+     * This class serves as a simple Queue to keep track of current
+     * temporarily viewed business.
+     * When instantialized, remember to pass in the maximum numbers
+     * of data will be stored. This instance can be serialized into
+     * String in order to save to SharedPreferences
+     */
+    public static class Name implements Serializable {
 
         private String[] tempArray;
         private int max_size;
@@ -662,24 +829,38 @@ public class Utility {
             this.head2 = 0;
         }
 
-        public boolean add(String t) {
+        /**
+         * Add a string element to the queue and will automatically delete
+         * the oldest element. Remember to check whether this t element is
+         * already in the Queue using Name.has(String t)
+         * @param t     the element to be added
+         * @return      the deleted element, or null if no element is added
+         *              or if total number of elements does not reach max
+         */
+        public String add(String t) {
             try {
                 if (isFull()) {
+                    String deleted = tempArray[head1];
                     tempArray[head1] = t;
                     head1 = (head1 + 1) % max_size;
                     head2 = (head2 + 1) % max_size;
+                    return deleted;
                 } else {
                     tempArray[head1] = t;
                     head1 = (head1 + 1) % max_size;
                 }
-                return true;
+
             } catch (Exception e) {
                 System.out.println(e);
-                return false;
             }
+            return null;
         }
 
-        public void print() {
+        /**
+         * This helper function prints all element in a Name instance, the
+         * printed result looks like [element1, element2, element3]
+         */
+        public String print() {
             String result = "[";
 
             if (!isFull()) {
@@ -700,16 +881,22 @@ public class Utility {
             if (result.length() > 1) {
                 result = result.substring(0, result.length() - 2) + "]";
                 System.out.println(result);
+                return result;
             } else {
                 System.out.println("This Name is empty");
+                return "This Name is empty";
             }
         }
 
+        /**
+         * Check if a Name instance contains element t.
+         * @param t     the element to check
+         * @return      if t is in the instance, return the index, otherwise
+         *              return -1. Note that the index is not in chronological
+         *              order of element t, but instead it is a spacial order
+         *              of t in the Name instance
+         */
         public int has(String t) {
-
-            // This method check if <t> is already in Name. If it
-            // is in, then return the index of <t> in Name, otherwise
-            // returns -1
 
             for (int dum_idx=0; dum_idx < max_size; dum_idx++) {
                 if (t == tempArray[dum_idx]) {
@@ -719,6 +906,14 @@ public class Utility {
             return -1;
         }
 
+        /**
+         * Get the element by index
+         * @param idx   the index of element, this index should comes from
+         *              Name.has(String t) to guarantee correct result. This
+         *              is stupid, if you know String t then you don't need
+         *              this method (has to fix this in some way)
+         * @return      the value that has index String t
+         */
         public String get(int idx) {
 
             if ((0 <= idx) && (idx < max_size)) {
@@ -728,7 +923,11 @@ public class Utility {
             return "";
         }
 
-
+        /**
+         * Check if the Name instance is full. In otherword, check if
+         * it contains the maximum amount of possible elements
+         * @return      true if it is full, false otherwise
+         */
         private boolean isFull() {
             if (head1 == head2) {
                 return true;
@@ -736,7 +935,104 @@ public class Utility {
                 return false;
             }
         }
+
+        /**
+         * This function reads a string and reconstruct the data
+         * @param input                     a string which holds information to reconstruct data
+         * @throws IOException
+         * @throws ClassNotFoundException
+         */
+        private void readObject(ObjectInputStream input) throws IOException, ClassNotFoundException {
+            tempArray = (String[]) input.readObject();
+            max_size = input.readInt();
+            head1 = input.readInt();
+            head2 = input.readInt();
+        }
+
+        /**
+         * This function turns an instance into a string
+         * @param output
+         * @throws IOException
+         */
+        private void writeObject(ObjectOutputStream output) throws IOException {
+            output.writeObject(tempArray);
+            output.writeInt(max_size);
+            output.writeInt(head1);
+            output.writeInt(head2);
+        }
     }
+
+    /**
+     * This function serializes an object to string
+     * @param object    an object that has Serializable implemented
+     * @return          a string representation of that object
+     */
+    public static String serializeToString(Object object) {
+
+        ByteArrayOutputStream byteInput;
+        ObjectOutputStream output = null;
+
+        try {
+            byteInput = new ByteArrayOutputStream();
+            output = new ObjectOutputStream(byteInput);
+            output.writeObject(object);
+            return Base64.encodeToString(byteInput.toByteArray(),
+                    Base64.DEFAULT);
+        } catch (IOException e) {
+            Log.e(LOG_TAG+".serializeToString",
+                  "IOException during serialization: " + e.getMessage());
+        } finally {
+            if (output != null) {
+                try {
+                    output.close();
+                } catch (IOException e) {
+                    Log.e(LOG_TAG + ".serializeToString",
+                          "IOException during closing: " + e.getMessage());
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * This function deserializes an object from string
+     * @param ser       a serialized string that will be decoded
+     * @return          an object that represented by original string
+     */
+    public static Object deserializeFromString(String ser) {
+
+        byte[] data = Base64.decode(ser, Base64.DEFAULT);
+        ByteArrayInputStream byteInput = new ByteArrayInputStream(data);
+        ObjectInputStream input = null;
+
+        try {
+            input = new ObjectInputStream(byteInput);
+            Object des = input.readObject();
+            return des;
+        } catch (IOException e) {
+            Log.e(LOG_TAG + ".deserializeFromString",
+                    "IOException during deserialize: " + e.getMessage());
+        } catch (ClassNotFoundException e) {
+            Log.e(LOG_TAG + ".deserializeFromString",
+                  "ClassNotFoundException during deserialization: " +
+                  e.getMessage());
+        } finally {
+            if (input != null) {
+                try {
+                    input.close();
+                } catch (IOException e) {
+                    Log.e(LOG_TAG + ".deserializeFromString",
+                          "IOException during closing stream: " +
+                          e.getMessage());
+                }
+            }
+        }
+        return null;
+    }
+
+
+
+    // The below functions and classes are for testing and development purposes
 
     // This class automates inserting fake data for development and testing purpose
     public static class FakeData {

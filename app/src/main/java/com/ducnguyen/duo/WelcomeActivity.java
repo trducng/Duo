@@ -16,7 +16,7 @@ import com.ducnguyen.duo.home.HomeActivity;
 
 public class WelcomeActivity extends AppCompatActivity {
 
-    public static final String LOG_CAT =
+    public static final String LOG_TAG =
             WelcomeActivity.class.getSimpleName();
 
     // collect user's location, current time and user ID
@@ -41,11 +41,11 @@ public class WelcomeActivity extends AppCompatActivity {
                     Log.v("Thread", "run1");
                     super.run();
 
-                    Utility.FakeData.addTagData(mContext);
+//                    Utility.FakeData.addTagData(mContext);
 
                     Log.v("Thread", "run2");
                     // wait 3000 milliseconds
-                    sleep(3000);
+                    sleep(500);
                 } catch (Exception e) {
                     Log.e("WelcomeActivity:", e.toString());
 
@@ -73,9 +73,10 @@ public class WelcomeActivity extends AppCompatActivity {
             // sending location and time uri to the server
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                     == PackageManager.PERMISSION_GRANTED) {
-                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,
-                                          0, 0,
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER,
+                                          300000, 200,
                                           Utility.locationUri);
+                Log.v(LOG_TAG, "Location");
             } else {
                 // TODO: if the user does not grant location permission, just send
                 // a query uri to the server, goes to the search page and indicate

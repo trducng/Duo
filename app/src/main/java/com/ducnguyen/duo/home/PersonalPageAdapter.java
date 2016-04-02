@@ -23,8 +23,10 @@ import com.ducnguyen.duo.Utility;
  */
 public class PersonalPageAdapter extends CursorAdapter {
 
-    private static double CUR_LATITUDE;
-    private static double CUR_LONGITUDE;
+    public static double CUR_LATITUDE;
+    public static double CUR_LONGITUDE;
+
+    public final String LOG_TAG = PersonalPageAdapter.class.getSimpleName();
 
     public PersonalPageAdapter(Context context, Cursor cursor, int flags) {
         super(context, cursor, 0);
@@ -35,13 +37,15 @@ public class PersonalPageAdapter extends CursorAdapter {
                     PackageManager.PERMISSION_GRANTED) {
                 Location location = PersonalPageFragment.lm
                         .getLastKnownLocation(LocationManager.GPS_PROVIDER);
-                CUR_LATITUDE = Utility.toRadians(location.getLatitude());
-                CUR_LONGITUDE = Utility.toRadians(location.getLongitude());
+                if (location != null) {
+                    CUR_LATITUDE = Utility.toRadians(location.getLatitude());
+                    CUR_LONGITUDE = Utility.toRadians(location.getLongitude());
+                }
             }
         }
 
         if (Utility.VERBOSITY >= 1) {
-            Log.v("TagsAdapter", "TagsAdapter is created with "
+            Log.v(LOG_TAG, LOG_TAG + " is created with "
                     + String.valueOf(cursor.getCount()) + " rows");
         }
 

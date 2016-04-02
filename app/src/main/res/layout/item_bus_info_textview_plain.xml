@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+This layout will be used for listview item in the information tab of
+business page. This is the plaintext layout.
+- If you want to have the text in this textview span multiple line, use \n
+- If you want to use bullet points, then use html entity for bullet point,
+such as &#8226;. Remember to have <br /> at the end of each bullet point
+so that it will have line-break. Some more html entities can be found in
+this link: http://www.elizabethcastro.com/html/extras/entities.html. Also
+for reference, these are the html tags that are supported by Android TextView
+https://commonsware.com/blog/Android/2010/05/26/html-tags-supported-by-textview.html
+-->
+
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
