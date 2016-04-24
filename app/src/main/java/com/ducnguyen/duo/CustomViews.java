@@ -7,7 +7,6 @@ import android.graphics.Typeface;
 import android.os.Build;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
-import android.util.AttributeSet;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -27,7 +26,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 
 /**
@@ -72,15 +70,6 @@ public class CustomViews {
 
         public BusMainInfo(Context context, Cursor cursor) {
             super(context);
-            init(context, cursor);
-        }
-
-        public BusMainInfo(Context context, AttributeSet attrs, Cursor cursor) {
-            this(context, attrs, 0, cursor);
-        }
-
-        public BusMainInfo(Context context, AttributeSet attrs, int defStyle, Cursor cursor) {
-            super(context, attrs, defStyle);
             init(context, cursor);
         }
 
@@ -135,7 +124,6 @@ public class CustomViews {
             }
         }
 
-
         private void attachLoc(String string) {
 
             if (Utility.VERBOSITY >= 1) {
@@ -143,12 +131,12 @@ public class CustomViews {
             }
 
             LinearLayout view = (LinearLayout) inflater.inflate(R.layout.item_bus_info_cell_layout,
-                    null, false);
+                    this, false);
             TextView header = (TextView) view.findViewById(R.id.textview_bus_info_cell_header);
-            header.setText("Location:");
+            header.setText(R.string.bus_info_location);
 
             TextView locView = (TextView) inflater.inflate(R.layout.item_bus_info_textview_plain,
-                                                            null, false);
+                                                            this, false);
             locView.setText(Html.fromHtml(string));
             view.addView(locView);
             this.addView(view);
@@ -162,12 +150,12 @@ public class CustomViews {
 
 
             LinearLayout view = (LinearLayout) inflater.inflate(R.layout.item_bus_info_cell_layout,
-                    null, false);
+                    this, false);
             TextView header = (TextView) view.findViewById(R.id.textview_bus_info_cell_header);
-            header.setText("Contact:");
+            header.setText(R.string.bus_info_contact);
 
             TextView conView = (TextView) inflater.inflate(R.layout.item_bus_info_textview_plain,
-                                                           null, false);
+                                                           view, false);
             conView.setText(Html.fromHtml(string));
             view.addView(conView);
             this.addView(view);
@@ -252,11 +240,11 @@ public class CustomViews {
                 Log.v(LOG_TAG, "attachHour: " + string);
             }
             LinearLayout view = (LinearLayout) inflater.inflate(R.layout.item_bus_info_cell_layout,
-                                                            null, false);
+                                                            this, false);
             TextView header = (TextView) view.findViewById(R.id.textview_bus_info_cell_header);
-            header.setText("Operation hours:");
+            header.setText(R.string.bus_info_hours);
             TextView hourView = (TextView) inflater.inflate(R.layout.item_bus_info_textview_plain,
-                                                            null, false);
+                                                            view, false);
             hourView.setText(Html.fromHtml(string));
             view.addView(hourView);
             this.addView(view);
@@ -270,22 +258,16 @@ public class CustomViews {
 
             LinearLayout view = (LinearLayout) inflater.inflate(
                             R.layout.item_bus_info_cell_layout,
-                            null, false);
+                            this, false);
             TextView header = (TextView) view.findViewById(
                             R.id.textview_bus_info_cell_header);
-            header.setText("News:");
-
-//            TextView newsView = (TextView) inflater.inflate(
-//                    R.layout.item_bus_info_textview_plain,
-//                    null, false);
-//            newsView.setText(string);
-//            view.addView(newsView);
+            header.setText(R.string.bus_info_news);
 
             try {
                 JSONArray news = new JSONArray(string);
                 for (int i=0; i<news.length(); i++) {
                     LinearLayout newsView = (LinearLayout)
-                            inflater.inflate(R.layout.item_bus_info_each_news, null, false);
+                            inflater.inflate(R.layout.item_bus_info_each_news, view, false);
                     JSONObject eachNews = news.getJSONObject(i);
 
                     if (!eachNews.getString(Utility.BUS_NEWS_IMG).equals("null")) {
@@ -333,20 +315,6 @@ public class CustomViews {
             }
 
             this.addView(view);
-        }
-
-        private void attachLoy(String string) {
-
-            if (Utility.VERBOSITY >= 1) {
-                Log.v(LOG_TAG, "attachLoy: " + string);
-            }
-            TextView loyView = new TextView(mContext);
-            loyView.setLayoutParams(new ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
-            loyView.setText("This is loyalty");
-//            loyView.setBackgroundColor(getResources().getColor(R.color.search_scrollview, null));
-            this.addView(loyView);
         }
 
 
@@ -504,7 +472,7 @@ public class CustomViews {
 	     * by pressing back button
 	     * @param keyCode       the keycode
 	     * @param event         the event of the click
-	     * @return
+	     * @return              true when user hits a key, false otherwise
 	     */
 	    @Override
 	    public boolean onKeyPreIme(int keyCode, KeyEvent event) {
@@ -1118,10 +1086,8 @@ public class CustomViews {
                 activeTextField = null;
             } else if (!activeCheckButtons.isEmpty()) {
                 activeCheckButtonsValues = new HashSet<>();
-                Iterator<SimpleButton> iterator =
-                        activeCheckButtons.iterator();
-                while (iterator.hasNext()) {
-                    iterator.next().toggle(false);
+                for (SimpleButton button: activeCheckButtons) {
+                    button.toggle(false);
                 }
                 activeCheckButtons = new HashSet<>();
             }
@@ -1180,6 +1146,10 @@ public class CustomViews {
         private Set<Object> mCurrentChoice = new HashSet<>();
         private Set<SmartRadioButton> mActiveChoices = new HashSet<>();
 
+
+        public BusLoyCheckBoxGroup(Context context) {
+            super(context);
+        }
 
 	    /**
          * Public constructor for checkbox group

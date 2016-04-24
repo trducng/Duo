@@ -56,7 +56,7 @@ public class Utility {
     // Verbosity == 1: print check-mark log (to see whether execution reaches that line of code)
     // Verbosity == 2: print example output (such as uri, string result)
     // Verbosity == 3: print periodical updates (such as location update)
-    public static final int VERBOSITY = -1;
+    public static int VERBOSITY = -1;
     public static final boolean IMPORTANCE = true;
 
     // LOG_TAG will be as category name in Log output
