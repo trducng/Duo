@@ -9,6 +9,14 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.ducnguyen.duo.WelcomeActivity">
 
+
+    <ListView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:id="@+id/listview_welcome_test"/>
+
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

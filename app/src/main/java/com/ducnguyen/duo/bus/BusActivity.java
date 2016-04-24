@@ -14,6 +14,8 @@ import android.util.Log;
 
 import com.ducnguyen.duo.R;
 import com.ducnguyen.duo.Utility;
+import com.ducnguyen.duo.bus.delivery.BusDelFragment;
+import com.ducnguyen.duo.bus.loyalty.BusLoyaltyFragment;
 import com.ducnguyen.duo.data.DataContract;
 
 import java.util.ArrayList;
@@ -34,14 +36,12 @@ public class BusActivity extends AppCompatActivity {
     ViewPager mViewPager;
     BusActivityPagerAdapter mPagerAdapter;
     Uri receivedUri = null;
-    String busID;
+    private String busID;
     DownloadThread dl = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-
 
         // 1.a Retrieve the uri sent by PersonalPageFragment/RecommendationPageFragment
         Intent intent = getIntent();
@@ -57,7 +57,9 @@ public class BusActivity extends AppCompatActivity {
             set_services = new HashSet<>(Arrays.asList(services));
         }
 
-        Log.v(LOG_TAG, "set_services include: " + set_services.toString());
+        if (Utility.VERBOSITY >= 2) {
+            Log.v(LOG_TAG, "set_services include: " + set_services.toString());
+        }
 
         // 1.b Check if the business ID is stored in SharedPreferences
         SharedPreferences cache = getPreferences(MODE_PRIVATE);
@@ -71,9 +73,11 @@ public class BusActivity extends AppCompatActivity {
                 dl = new DownloadThread("Download data for " + busID,
                         toDownload, busID, this);
                 dl.start();
+                Log.v(LOG_TAG, "savedID != null");
+            } else {
+                Log.v(LOG_TAG, "saveID.contains(busID)");
             }
         } else {
-
             Set<String> toDownload = checkDownloadCache(cache,
                     busID, set_services);
             if (Utility.VERBOSITY >= 2) {
@@ -81,12 +85,14 @@ public class BusActivity extends AppCompatActivity {
                 toDownload = new HashSet<>(
                         Arrays.asList(Utility.TEMP_BUSID_DELIVERY,
                                 Utility.TEMP_BUSID_INFO,
+                                Utility.TEMP_BUSID_LOYALTY,
                                 Utility.TEMP_BUSID_PRODUCTS,
                                 Utility.TEMP_BUSID_SCHEDULE));
             }
             dl = new DownloadThread("Download data for " + busID,
                     toDownload, busID, this);
             dl.start();
+            Log.v(LOG_TAG, "savedID == null");
         }
 
         // 2. Set the view for activity
@@ -128,6 +134,21 @@ public class BusActivity extends AppCompatActivity {
         });
     }
 
+
+    @Override
+    public void onBackPressed() {
+        if (dl != null) {
+            dl.interrupt();
+        }
+        super.onBackPressed();
+    }
+
+
+    public String getBusId() {
+        return busID;
+    }
+
+
     /**
      * This function checks if the clicked busID has which components
      * already stored in the device to see which components need to be
@@ -152,6 +173,24 @@ public class BusActivity extends AppCompatActivity {
             if (tempInfo.has(busID) == -1) {
                 toDownload.add(Utility.TEMP_BUSID_INFO);
             }
+        } else {
+            toDownload.add(Utility.TEMP_BUSID_INFO);
+        }
+
+        // check business loyalty
+        String tempBusLoy = cache.getString(
+                Utility.TEMP_BUSID_LOYALTY, null);
+        if (tempBusLoy != null) {
+            Utility.Name tempLoy = (Utility.Name) Utility
+                    .deserializeFromString(tempBusLoy);
+            if ((tempLoy.has(busID) == -1) &&
+                    (set_services.contains(Utility.CODE_LOYALTY))) {
+                toDownload.add(Utility.TEMP_BUSID_LOYALTY);
+            }
+        } else {
+            if (set_services.contains(Utility.CODE_LOYALTY)) {
+                toDownload.add(Utility.TEMP_BUSID_LOYALTY);
+            }
         }
 
         // check business products
@@ -162,6 +201,10 @@ public class BusActivity extends AppCompatActivity {
                     .deserializeFromString(tempBusProd);
             if ((tempProd.has(busID) == -1) &&
                     (set_services.contains(Utility.CODE_PRODUCTS))) {
+                toDownload.add(Utility.TEMP_BUSID_PRODUCTS);
+            }
+        } else {
+            if (set_services.contains(Utility.CODE_PRODUCTS)) {
                 toDownload.add(Utility.TEMP_BUSID_PRODUCTS);
             }
         }
@@ -176,6 +219,10 @@ public class BusActivity extends AppCompatActivity {
                     (set_services.contains(Utility.CODE_DELIVERY))) {
                 toDownload.add(Utility.TEMP_BUSID_DELIVERY);
             }
+        } else {
+            if (set_services.contains(Utility.CODE_DELIVERY)) {
+                toDownload.add(Utility.TEMP_BUSID_DELIVERY);
+            }
         }
 
         // check business schedule
@@ -188,9 +235,19 @@ public class BusActivity extends AppCompatActivity {
                     (set_services.contains(Utility.CODE_SCHEDULE))) {
                 toDownload.add(Utility.TEMP_BUSID_SCHEDULE);
             }
+        } else {
+            if (set_services.contains(Utility.CODE_SCHEDULE)) {
+                toDownload.add(Utility.TEMP_BUSID_SCHEDULE);
+            }
         }
 
+
+
         if (Utility.VERBOSITY >= 2) {
+            Log.v(LOG_TAG + ".checkDownloadCache",
+                    toDownload.toString());
+        }
+        if (Utility.IMPORTANCE) {
             Log.v(LOG_TAG + ".checkDownloadCache",
                     toDownload.toString());
         }
@@ -216,10 +273,10 @@ public class BusActivity extends AppCompatActivity {
         public String busID;
         public Context mContext;
 
-        public DownloadThread(String name, Set<String> toDownload,
+        public DownloadThread(String name, Set<String> download,
                               String busId, Context context) {
             super(name);
-            this.toDownload = toDownload;
+            this.toDownload = download;
             // priority will always be defaulted to BasicInfo
             this.priority = Utility.TEMP_BUSID_INFO;
             this.secondary = null;
@@ -241,6 +298,8 @@ public class BusActivity extends AppCompatActivity {
                     query.put(Utility.URI_BUS_KEY, tempPriority);
                     Uri url = Utility.buildUri(Utility.URI_BUS, query);
 
+                    Log.v(LOG_TAG+".DownloadThread", "Uri: " + url.toString());
+
                     // download the data and put it into the database
                     Utility.updateDatabase(mContext, tempPriority, url);
 
@@ -252,8 +311,7 @@ public class BusActivity extends AppCompatActivity {
                         try {
                             sleep(3000);
                         } catch (InterruptedException e) {
-                            Log.e(LOG_TAG + ".DownloadThread",
-                                    "InterruptedException");
+                            return;
                         }
                     }
 
@@ -293,8 +351,7 @@ public class BusActivity extends AppCompatActivity {
                             try {
                                 sleep(3000);
                             } catch (InterruptedException e) {
-                                Log.e(LOG_TAG + ".DownloadThread",
-                                        "InterruptedException");
+                                return;
                             }
                         }
                         break;
@@ -355,6 +412,7 @@ public class BusActivity extends AppCompatActivity {
                 }
             }
             NUM_ITEMS = ALL_TABS.size();
+            Log.v(LOG_TAG, "ALL_TABS: " + ALL_TABS.toString());
         }
 
         @Override
@@ -388,13 +446,13 @@ public class BusActivity extends AppCompatActivity {
 
                 case Utility.TAB_DELIVERY: {
 
-                    BusInfoFragment infoFrag = new BusInfoFragment();
+                    BusDelFragment delFrag = new BusDelFragment();
                     Bundle bundle = new Bundle();
                     bundle.putString(Utility.URI_BUSID, busId);
-                    infoFrag.setArguments(bundle);
+                    delFrag.setArguments(bundle);
 
 
-                    return infoFrag;
+                    return delFrag;
                 }
 
                 case Utility.TAB_SCHEDULE: {
@@ -405,6 +463,16 @@ public class BusActivity extends AppCompatActivity {
                     infoFrag.setArguments(bundle);
 
                     return infoFrag;
+                }
+
+                case Utility.TAB_LOYALTY: {
+
+                    BusLoyaltyFragment loyalFrag = new BusLoyaltyFragment();
+                    Bundle bundle = new Bundle();
+                    bundle.putString(Utility.URI_BUSID, busId);
+                    loyalFrag.setArguments(bundle);
+
+                    return loyalFrag;
                 }
 
                 default:

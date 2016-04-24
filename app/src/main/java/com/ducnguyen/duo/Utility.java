@@ -56,7 +56,8 @@ public class Utility {
     // Verbosity == 1: print check-mark log (to see whether execution reaches that line of code)
     // Verbosity == 2: print example output (such as uri, string result)
     // Verbosity == 3: print periodical updates (such as location update)
-    public static final int VERBOSITY = 2;
+    public static final int VERBOSITY = -1;
+    public static final boolean IMPORTANCE = true;
 
     // LOG_TAG will be as category name in Log output
     public static final String LOG_TAG = Utility.class.getSimpleName();
@@ -77,20 +78,29 @@ public class Utility {
     public static final String URI_PRODUCTS = "prods";
     public static final String URI_SCHEDULE = "sche";
     public static final String URI_DELIVERY = "del";
+    public static final String URI_LOYALTY = "loy";
+    public static final String URI_LOYALTY_MORE = "loyM";
     // search url query parameters
     public static final String URI_SEARCH_QUERY = "query";
+
+    // these are types of extra questions in bus loyalty
+    public static final String BUS_LOYAL_EXTRA_TEXT = "textbox";
+    public static final String BUS_LOYAL_EXTRA_RADIO = "radiobox";
+    public static final String BUS_LOYAL_EXTRA_CHECK = "checkbox";
 
     // these will be the code stored in JSON delivered from server
     public static final String CODE_MESSAGE = "message";
     public static final String CODE_PRODUCTS = "products";
     public static final String CODE_DELIVERY = "delivery";
     public static final String CODE_SCHEDULE = "calendar";
+    public static final String CODE_LOYALTY = "loyalty";
 
     // these are the name of tabs
     public static final String TAB_BASIC_INFO = "Information";
     public static final String TAB_PRODUCTS = "Products";
     public static final String TAB_DELIVERY = "Delivery";
     public static final String TAB_SCHEDULE = "Reservation";
+    public static final String TAB_LOYALTY = "Loyalty";
 
     // these are the name for database columns that have the same name
     public static final String COL_BUSID = URI_BUSID;
@@ -98,6 +108,7 @@ public class Utility {
     public static final String COL_BUSLOCATION = "loc";
     public static final String COL_BUSSERVICES = "ser";
     public static final String COL_BUSCOVIMG = "covImg";
+    public static final String COL_TYPE = "type";
 
     // these are the keys in SharedPreferences
     public static final String SAVED_BUSID = "saved";
@@ -105,14 +116,21 @@ public class Utility {
     public static final String TEMP_BUSID_PRODUCTS = URI_PRODUCTS;
     public static final String TEMP_BUSID_DELIVERY = URI_DELIVERY;
     public static final String TEMP_BUSID_SCHEDULE = URI_SCHEDULE;
+    public static final String TEMP_BUSID_LOYALTY = URI_LOYALTY;
     public static final String TEMP_LAT = URI_LATITUDE;
     public static final String TEMP_LONG = URI_LONGITUDE;
+
+    // these are the keys in BusInfo news' JSONObjects
+    public static final String BUS_NEWS_TITLE = "title";
+    public static final String BUS_NEWS_IMG = "img";
+    public static final String BUS_NEWS_TEXT = "text";
 
 
     // this HashMap maps code with the appropriate name
     public static final HashMap<String, String> CODE_TO_NAME = new HashMap<String, String>();
     static {
                         CODE_TO_NAME.put(CODE_PRODUCTS, TAB_PRODUCTS);
+                        CODE_TO_NAME.put(CODE_LOYALTY, TAB_LOYALTY);
                         CODE_TO_NAME.put(CODE_DELIVERY, TAB_DELIVERY);
                         CODE_TO_NAME.put(CODE_SCHEDULE, TAB_SCHEDULE);
     };
@@ -560,10 +578,11 @@ public class Utility {
 
         if (type.equals(URI_RECOMMEND)) {
             uri = Uri.parse("https://www.dropbox.com/s/6hmu5ekt4ntx46t/rec.json?dl=1");
+
             String result = sendHTTPRequest(uri);
             Vector<ContentValues> data;
             try {
-                data = getDataFromJSON(result);
+                data = getDataFromJSON(result, null);
                 if (data.size() > 0) {
                     ContentValues[] insertData = new ContentValues[data.size()];
                     data.toArray(insertData);
@@ -589,20 +608,19 @@ public class Utility {
             String result = sendHTTPRequest(uri);
             Vector<ContentValues> data;
             try {
-                data = getDataFromJSON(result);
+                data = getDataFromJSON(result, null);
                 if (data.size() > 0) {
                     ContentValues[] insertData = new ContentValues[data.size()];
                     data.toArray(insertData);
 
                     // Delete the old data here to avoid building up data
-                    // TODO: delete indiscriminately here and onBackPressed();
                     context.getContentResolver().delete(
                             DataContract.searchEntry.buildURI(),
                             null, null
                     );
 
                     // Bulk insert the new data
-                    int test = context.getContentResolver().bulkInsert(
+                    context.getContentResolver().bulkInsert(
                             DataContract.searchEntry.buildURI(),
                             insertData
                     );
@@ -612,25 +630,104 @@ public class Utility {
             } catch (JSONException e) {
                 Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
             }
+        } else if (type.equals(URI_INFO)) {
+            uri = Uri.parse("https://www.dropbox.com/s/z4ptoirxjaueyvz/busD103.json?dl=1");
+            uri = Uri.parse("https://www.dropbox.com/s/haa4vrqc0u9o07w/busD103-right.json?dl=1");
+            Log.v(LOG_TAG + ".updateDatabase", "URI_INFO for D103 is downloaded");
+            Log.v(LOG_TAG, "Url: " + uri.toString());
+            String busID = uri.getQueryParameter(URI_BUSID);
+            busID = "RecD103";
+            String result = sendHTTPRequest(uri);
+            Vector<ContentValues> data;
+            try {
+                data = getDataFromJSON(result, null);
+
+                // since it retrieves specific business, data length should always be 1
+                if (data.size() == 1) {
+                    ContentValues insertData = data.get(0);
+                    // for testing purpose only, to avoid building up data
+                    int i = context.getContentResolver().delete(
+                            DataContract.detailedEntry.buildDetailedURI(busID),
+                            null, null);
+                    context.getContentResolver().delete(
+                            DataContract.detailedEntry.buildDetailedURI("D103"),
+                            null, null);
+                    Log.v(LOG_TAG, "Deleted: " + i);
+                    context.getContentResolver().insert(
+                            DataContract.detailedEntry.buildDetailedURI(busID),
+                            insertData);
+
+                }
+            } catch (JSONException e) {
+                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
+            }
+        } else if (type.equals(URI_LOYALTY)) {
+            uri = Uri.parse("https://www.dropbox.com/s/g2p6q1y9d2y7y2p/loy.json?dl=1");
+            Log.v(LOG_TAG + ".updateDatabase", "URI_LOYALTY for D103 is downloaded");
+            Log.v(LOG_TAG, "Url: " + uri.toString());
+            String busID = uri.getQueryParameter(URI_BUSID);
+            busID = "RecD103";
+            String result = sendHTTPRequest(uri);
+            Vector<ContentValues> data;
+            try {
+                data = getDataFromJSON(result, new String[] {COL_BUSID});
+
+                if (data.size() > 0) {
+                    ContentValues[] insertData = new ContentValues[data.size()];
+                    data.toArray(insertData);
+
+                    // for testing purpose only, to avoid building up data
+                    // TODO: implement the queue system to delete old data
+                    int i = context.getContentResolver().delete(
+                            DataContract.loyaltyDetailEntry.buildURI(busID),
+                            null, null);
+                    Log.v(LOG_TAG, "Deleted: " + i);
+                    context.getContentResolver().bulkInsert(
+                            DataContract.loyaltyDetailEntry.buildURI(busID),
+                            insertData);
+
+                }
+
+            } catch (JSONException e) {
+                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
+            }
+        } else if (type.equals(URI_LOYALTY_MORE)) {
+            uri = Uri.parse("https://www.dropbox.com/s/b2zxqnxci0js5rz/loyMoreD103.json?dl=1");
+            Log.v(LOG_TAG + ".updateDatabase", "URI_LOYALTY_MORE for D103 is downloaded");
+            Log.v(LOG_TAG, "Url: " + uri.toString());
+            String busID = uri.getQueryParameter(URI_BUSID);
+            busID = "RecD103";
+            String result = sendHTTPRequest(uri);
+            Vector<ContentValues> data;
+            try {
+                data = getDataFromJSON(result, new String[] {COL_BUSID});
+
+                // since it retrieves specific business, data length should always be 1
+                if (data.size() > 0) {
+                    ContentValues[] insertData = new ContentValues[data.size()];
+                    data.toArray(insertData);
+
+
+                    // This deletion is to avoid building up large amount of data
+                    // TODO: implement queue system
+                    int i = context.getContentResolver().delete(
+                            DataContract.loyaltyDetailEntry.buildURI(busID),
+                            COL_BUSID + " = ? AND " + COL_TYPE + " = ?",
+                            new String[] {busID, "5"}
+                    );
+
+                    Log.v(LOG_TAG, "Deleted button: " + i);
+
+                    context.getContentResolver().bulkInsert(
+                            DataContract.loyaltyDetailEntry.buildURI(busID),
+                            insertData);
+
+
+                }
+            } catch (JSONException e) {
+                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
+            }
         }
-//        } else if (type.equals(URI_INFO)) {
-//            String busID = uri.getQueryParameter(URI_BUSID);
-//            String result = sendHTTPRequest(uri);
-//            Vector<ContentValues> data;
-//            try {
-//                data = getDataFromJSON(result);
-//
-//                // since it retrieves specific business, data length should always be 1
-//                if (data.size() == 1) {
-//                    ContentValues insertData = data.get(0);
-//                    context.getContentResolver().insert(
-//                            DataContract.detailedEntry.buildDetailedURI(busID),
-//                            insertData
-//                    );
-//                }
-//            } catch (JSONException e) {
-//                Log.e(LOG_TAG + ".updateDatabase", "JSONException: " + e.getMessage());
-//            }
 //        } else if (type.equals(URI_PRODUCTS)) {
 //            String busID = uri.getQueryParameter(URI_BUSID);
 //            String result = sendHTTPRequest(uri);
@@ -773,24 +870,34 @@ public class Utility {
     // This function takes a string, which is a serialized (JSON format), convert
     // it to JSON, and then return a list of ContentValues, which will be used to
     // update into the database
-    public static Vector<ContentValues> getDataFromJSON(String rawString)
+    public static Vector<ContentValues> getDataFromJSON(String rawString,
+                                                        String[] extraKeys)
         throws JSONException{
 
         try {
+
+            JSONObject originalFile = new JSONObject(rawString);
             // The JSON data has the form of {"item": [json1, json2...]}
-            JSONArray jsonFile = new JSONObject(rawString).getJSONArray("item");
+            JSONArray jsonFile = originalFile.getJSONArray("item");
 
 //            Log.v("getDataFromJson", jsonFile.toString());
 //            Log.v("getDataFromJson", "jsonFile length: " + String.valueOf(jsonFile.length()));
 //            Log.v("getDataFromJson", "First item: " +  jsonFile.getJSONObject(0).toString());
 
-            Vector<ContentValues> cvFiles = new Vector<ContentValues>(jsonFile.length());
+            Vector<ContentValues> cvFiles = new Vector<>(jsonFile.length());
 
             for (int i = 0; i < jsonFile.length(); i++) {
 
                 JSONObject eachRow = jsonFile.getJSONObject(i);
                 Iterator<?> keys = eachRow.keys();
                 ContentValues eachResult = new ContentValues();
+
+                // Get the value from extraKeys (outside of "item")
+                if (extraKeys != null) {
+                    for (String extraKey: extraKeys) {
+                        eachResult.put(extraKey, originalFile.getString(extraKey));
+                    }
+                }
 
                 while (keys.hasNext()) {
                     String key = (String) keys.next();
@@ -1045,7 +1152,7 @@ public class Utility {
 
             try {
                 String result = sendHTTPRequest(link);
-                Vector<ContentValues> data = getDataFromJSON(result);
+                Vector<ContentValues> data = getDataFromJSON(result, null);
                 for (ContentValues eachRow: data) {
                     long row = db.insert(DataContract.TAG, null, eachRow);
                     if (VERBOSITY >= 2) Log.v("addTagData", "Row: " + String.valueOf(row));
@@ -1068,7 +1175,7 @@ public class Utility {
 
             try {
                 String result = sendHTTPRequest(link);
-                Vector<ContentValues> data = getDataFromJSON(result);
+                Vector<ContentValues> data = getDataFromJSON(result, null);
                 for (ContentValues eachRow: data) {
                     long row = db.insert(DataContract.SEARCH, null, eachRow);
                     Log.v("addSearchData", "Row: " + String.valueOf(row));
@@ -1091,7 +1198,7 @@ public class Utility {
 
             try {
                 String result = sendHTTPRequest(link);
-                Vector<ContentValues> data = getDataFromJSON(result);
+                Vector<ContentValues> data = getDataFromJSON(result, null);
                 for (ContentValues eachRow: data) {
                     long row = db.insert(DataContract.DETAILED, null, eachRow);
                     Log.v("addDetailedData", "Row: " + String.valueOf(row));
@@ -1115,7 +1222,7 @@ public class Utility {
 
             try {
                 String result = sendHTTPRequest(link);
-                Vector<ContentValues> data = getDataFromJSON(result);
+                Vector<ContentValues> data = getDataFromJSON(result, null);
                 for (ContentValues eachRow: data) {
                     long row = db.insert(DataContract.productsEntry.getTable("harrypotter"),
                             null, eachRow);

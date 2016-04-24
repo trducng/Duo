@@ -56,7 +56,7 @@ public class DataProvider extends ContentProvider {
             case EACH_BUSINESS:
                 return DataContract.detailedEntry.CONTENT_ITEM_TYPE;
             case EACH_LOYALTY:
-                return DataContract.loyaltyEntry.CONTENT_ITEM_TYPE;
+                return DataContract.loyaltyDetailEntry.CONTENT_ITEM_TYPE;
             case SEARCH:
                 return DataContract.searchEntry.CONTENT_TYPE;
             case RECOMMENDATION:
@@ -83,14 +83,15 @@ public class DataProvider extends ContentProvider {
     }
 
     @Override
-    public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
+    public Cursor query(Uri uri, String[] projection, String selection,
+                        String[] selectionArgs, String sortOrder) {
 
         Cursor reCursor;
+        SQLiteDatabase db = mDatabaseOpener.getReadableDatabase();
 
         switch(mUriMatcher.match(uri)) {
             case ALL_BOOKMARKS: {
-                reCursor = mDatabaseOpener.getReadableDatabase()
-                        .query(DataContract.TAG,
+                reCursor = db.query(DataContract.TAG,
                                 projection,
                                 selection,
                                 selectionArgs,
@@ -99,8 +100,7 @@ public class DataProvider extends ContentProvider {
                 break;
             }
             case ALL_EVENTS: {
-                reCursor = mDatabaseOpener.getReadableDatabase()
-                        .query(DataContract.EVENTS,
+                reCursor = db.query(DataContract.EVENTS,
                                 projection,
                                 selection,
                                 selectionArgs,
@@ -109,8 +109,7 @@ public class DataProvider extends ContentProvider {
                 break;
             }
             case ALL_LOYALTY: {
-                reCursor = mDatabaseOpener.getReadableDatabase()
-                        .query(DataContract.LOYALTY,
+                reCursor = db.query(DataContract.LOYALTY,
                                 projection,
                                 selection,
                                 selectionArgs,
@@ -122,9 +121,22 @@ public class DataProvider extends ContentProvider {
                 reCursor = returnEachBookmarkList(uri, projection, sortOrder);
                 break;
             }
+            case EACH_LOYALTY: {
+
+                if ((selection == null) && (selectionArgs == null)) {
+                    selection = DataContract.loyaltyDetailEntry.COL_BUSID + " = ?";
+                    selectionArgs = new String[]
+                            {DataContract.loyaltyDetailEntry.getIdFromUri(uri)};
+                }
+
+                reCursor = db.query(DataContract.LOYALTY_DETAIL,
+                                    projection, selection, selectionArgs,
+                                    null, null,
+                                    DataContract.loyaltyDetailEntry.sortQueryReturn());
+                break;
+            }
             case SEARCH: {
-                reCursor = mDatabaseOpener.getReadableDatabase()
-                        .query(DataContract.SEARCH,
+                reCursor = db.query(DataContract.SEARCH,
                                 projection,
                                 selection,
                                 selectionArgs,
@@ -133,8 +145,7 @@ public class DataProvider extends ContentProvider {
                 break;
             }
             case RECOMMENDATION: {
-                reCursor = mDatabaseOpener.getReadableDatabase()
-                        .query(DataContract.RECOMMENDATION,
+                reCursor = db.query(DataContract.RECOMMENDATION,
                                 projection,
                                 selection,
                                 selectionArgs,
@@ -143,7 +154,15 @@ public class DataProvider extends ContentProvider {
                 break;
             }
             case EACH_BUSINESS: {
-                reCursor = returnEachBusiness(uri);
+
+                String busID = DataContract.detailedEntry.getBusID(uri);
+                String condition = DataContract.detailedEntry.COL_BUSID + " = ?";
+
+                reCursor = db.query(DataContract.DETAILED,
+                        projection,
+                        condition,
+                        new String[]{busID},
+                        null, null, null);
                 break;
             }
             case EACH_BUSINESS_PRODUCTS: {
@@ -160,7 +179,6 @@ public class DataProvider extends ContentProvider {
         }
 
         reCursor.setNotificationUri(getContext().getContentResolver(), uri);
-
         return reCursor;
     }
 
@@ -175,6 +193,7 @@ public class DataProvider extends ContentProvider {
         Uri returnUri;
 
         switch (mUriMatcher.match(uri)) {
+
             case SINGLE_BOOKMARK: {
                 long _id = mDatabaseOpener.getWritableDatabase().insert(
                                 DataContract.TAG, null, values
@@ -190,6 +209,18 @@ public class DataProvider extends ContentProvider {
             case EACH_BUSINESS: {
                 long _id = mDatabaseOpener.getWritableDatabase().insert(
                                 DataContract.DETAILED, null, values
+                );
+                if (_id > 0) {
+                    returnUri = uri;
+                } else {
+                    throw new SQLException("Failed to insert row int " + uri);
+                }
+                break;
+            }
+
+            case EACH_LOYALTY: {
+                long _id = mDatabaseOpener.getWritableDatabase().insert(
+                                DataContract.LOYALTY_DETAIL, null, values
                 );
                 if (_id > 0) {
                     returnUri = uri;
@@ -248,6 +279,24 @@ public class DataProvider extends ContentProvider {
                 return returnCount;
             }
 
+            case EACH_LOYALTY: {
+                db.beginTransaction();
+                int returnCount = 0;
+                try {
+                    for (ContentValues value: values) {
+                        long _id = db.insert(DataContract.LOYALTY_DETAIL, null, value);
+                        if (_id != -1) {
+                            returnCount++;
+                        }
+                    }
+                    db.setTransactionSuccessful();;
+                } finally {
+                    db.endTransaction();
+                }
+                getContext().getContentResolver().notifyChange(uri, null);
+                return returnCount;
+            }
+
             default:
                 return super.bulkInsert(uri, values);
         }
@@ -278,6 +327,22 @@ public class DataProvider extends ContentProvider {
 
             case SEARCH: {
                 rowsDeleted = db.delete(DataContract.SEARCH, selection, selectionArgs);
+                break;
+            }
+
+            case EACH_BUSINESS: {
+                rowsDeleted = deleteEachBusiness(uri, db);
+                break;
+            }
+
+            case EACH_LOYALTY: {
+
+                if ((selection.equals("1")) && (selectionArgs == null)) {
+                    selection = DataContract.loyaltyDetailEntry.COL_BUSID + " = ?";
+                    selectionArgs = new String[]
+                            {DataContract.loyaltyDetailEntry.getIdFromUri(uri)};
+                }
+                rowsDeleted = db.delete(DataContract.LOYALTY_DETAIL, selection, selectionArgs);
                 break;
             }
 
@@ -315,7 +380,7 @@ public class DataProvider extends ContentProvider {
         matcher.addURI(authority, DataContract.DETAILED + "/*", EACH_BUSINESS);
         matcher.addURI(authority, DataContract.TAG + "/*/*", EACH_BUSINESS);
         matcher.addURI(authority, DataContract.EVENTS + "/*", EACH_BUSINESS);
-        matcher.addURI(authority, DataContract.LOYALTY + "/*", EACH_LOYALTY);
+        matcher.addURI(authority, DataContract.LOYALTY_DETAIL + "/*", EACH_LOYALTY);
 
         return matcher;
     }
@@ -338,20 +403,16 @@ public class DataProvider extends ContentProvider {
 
     }
 
-    private Cursor returnEachBusiness(Uri uri) {
+    private int deleteEachBusiness(Uri uri, SQLiteDatabase db) {
 
-        // This function gets the URI and return the specific business
+        // Get the busid and create a condition
         String busID = DataContract.detailedEntry.getBusID(uri);
         String condition = DataContract.detailedEntry.COL_BUSID + " = ?";
 
-        return mDatabaseOpener.getReadableDatabase()
-                .query(DataContract.DETAILED,
-                        null,
-                        condition,
-                        new String[]{busID},
-                        null, null, null);
+        return db.delete(DataContract.DETAILED,
+                         condition,
+                         new String[] {busID});
     }
-
 
     private Cursor returnBusProducts(Uri uri) {
 

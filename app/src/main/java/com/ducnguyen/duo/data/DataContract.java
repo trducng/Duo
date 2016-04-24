@@ -34,6 +34,7 @@ public class DataContract {
     public static final String SEARCH = "search";
     public static final String RECOMMENDATION = "recom";
     public static final String EVENTS = "events";
+    public static final String LOYALTY_DETAIL = "loyDet";
 
 
     // Define each column and each specific detail for each table
@@ -287,7 +288,7 @@ public class DataContract {
         public static final String COL_NAME = Utility.COL_BUSNAME;
         public static final String COL_CIMG = Utility.COL_BUSCOVIMG;
         public static final String COL_CURPOINT = "curPoint";
-        public static final String COL_LOYALDETAIL = "loDet";
+        public static final String COL_FAVOURITE = "fav";
 
         public static Uri buildURI() {
 
@@ -378,4 +379,70 @@ public class DataContract {
         }
 
     }
+
+    public static final class loyaltyDetailEntry implements BaseColumns {
+
+        public static final Uri CONTENT_URI =
+                BASE_URI.buildUpon().appendPath(LOYALTY_DETAIL).build();
+
+        public static final String CONTENT_TYPE =
+                ContentResolver.CURSOR_DIR_BASE_TYPE + "/"
+                + PACKAGE_NAME + "/" + LOYALTY_DETAIL;
+        public static final String CONTENT_ITEM_TYPE =
+                ContentResolver.CURSOR_ITEM_BASE_TYPE + "/"
+                + PACKAGE_NAME + "/" + LOYALTY_DETAIL;
+
+        public static final String COL_BUSID = Utility.COL_BUSID;
+        public static final String COL_GREETING = "greet";
+        public static final String COL_MESSAGE = "mess";
+        public static final String COL_IMG = "img";
+        public static final String COL_ITEM = "name";
+        public static final String COL_ITEM_DESC = "desc";
+        public static final String COL_PTS = "pts";
+
+        /**
+         * COL_TYPE contains the following values and associated meanings:
+         * 0: greeting              1: message
+         * 2: personal (opt)        3: separator (opt if has 2)
+         * 4: general               5: register button
+         * 6: other infor (opt)     7: final register button
+         * Refer to data wireframe to better get the idea
+         */
+        public static final String COL_TYPE = Utility.COL_TYPE;
+
+
+        /**
+         * Create the URI to query loyalty detail of a specific business.
+         * The end result would looks like:
+         * content://com.ducnguyen.duo/loyDet/<busID>
+         * @param busID     the ID of desired business
+         * @return          URI of the query to be handled by ContentProvider
+         */
+        public static Uri buildURI(String busID) {
+            return CONTENT_URI.buildUpon().appendPath(busID).build();
+        }
+
+        /**
+         * Sort the result returned by the query. This string will be
+         * placed after SORT BY. It has the format:
+         * <COL_TYPE> ASC, [COL_PTS] ASC
+         * @return
+         */
+        public static String sortQueryReturn() {
+            return COL_TYPE + " ASC, " + COL_PTS + " ASC";
+        }
+
+        /**
+         * Get bussines ID from URI. Specifically, given a busID like this
+         * content://com.ducnguyen.duo/loyDet/<busID>, return <busID>
+         * @param uri   the URI that contains busID
+         * @return      busID
+         */
+        public static String getIdFromUri(Uri uri) {
+
+            String[] segments = uri.getPath().split("/");
+            return segments[segments.length - 1];
+        }
+    }
+
 }

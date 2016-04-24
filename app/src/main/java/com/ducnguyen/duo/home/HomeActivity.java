@@ -10,10 +10,11 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.SearchView;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.widget.SearchView;
 
 import com.ducnguyen.duo.R;
 import com.ducnguyen.duo.Utility;
@@ -31,7 +32,6 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
 
         // 1. Set the view for activity
         setContentView(R.layout.activity_home);
@@ -51,6 +51,14 @@ public class HomeActivity extends AppCompatActivity {
 //                super.onPageSelected(position);
 //            }
 //        });
+
+
+        // 4. Create the toolbar and set it as action bar
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.toolbar);
+        if (Utility.VERBOSITY >= 2) {
+            Log.v(LOG_TAG, "myToolbar: " + myToolbar.toString());
+        }
+        setSupportActionBar(myToolbar);
     }
 
     @Override
@@ -61,35 +69,34 @@ public class HomeActivity extends AppCompatActivity {
 
         SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
         searchView = (SearchView) menu.findItem(R.id.general_search).getActionView();
+        searchView.setMaxWidth(Integer.MAX_VALUE);
         searchView.setIconifiedByDefault(false);
 
         if (Utility.VERBOSITY >= 1) {
             Log.v(LOG_TAG, "Test menu - before set searchable info");
         }
         SearchableInfo test = searchManager.getSearchableInfo(getComponentName());
-        if ((test == null) && (Utility.VERBOSITY >=2 )){
+        if ((test == null) && (Utility.VERBOSITY >= 2)) {
             Log.v(LOG_TAG, "Test menu - This shit is null");
         }
         ComponentName name = test.getSearchActivity();
-        Log.v(LOG_TAG, "Test menu - name of searchable activity: " + name.toString());
+        if (Utility.VERBOSITY >= 2) {
+            Log.v(LOG_TAG, "Test menu - name of searchable activity: " + name.toString());
+        }
         searchView.setSearchableInfo(test);
         if (Utility.VERBOSITY >= 1) {
             Log.v(LOG_TAG, "Test menu - after set searchable info");
         }
 
-
         return true;
     }
 
 
-
     @Override
-    protected void onDestroy() {
-
+    protected void onPause() {
         searchView.setQuery("", false);
         searchView.clearFocus();
-
-        super.onDestroy();
+        super.onPause();
     }
 
     public static class HomeActivityPagerAdapter extends FragmentPagerAdapter {

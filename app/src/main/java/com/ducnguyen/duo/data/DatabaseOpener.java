@@ -13,6 +13,7 @@ import com.ducnguyen.duo.data.DataContract.searchEntry;
 import com.ducnguyen.duo.data.DataContract.testimonialsEntry;
 import com.ducnguyen.duo.data.DataContract.loyaltyEntry;
 import com.ducnguyen.duo.data.DataContract.recommendEntry;
+import com.ducnguyen.duo.data.DataContract.loyaltyDetailEntry;
 
 
 /**
@@ -21,7 +22,7 @@ import com.ducnguyen.duo.data.DataContract.recommendEntry;
  */
 public class DatabaseOpener extends SQLiteOpenHelper {
 
-    private static final int DATABASE_VERSION = 5;
+    private static final int DATABASE_VERSION = 8;
 
     static final String DATABASE_NAME = "duo.db";
 
@@ -57,17 +58,17 @@ public class DatabaseOpener extends SQLiteOpenHelper {
         // Create business table
         final String SQL_CREATE_DETAILED_TABLE = "CREATE TABLE "
                 + DataContract.DETAILED + " ("
-                + detailedEntry.COL_SAVED + " TEXT NOT NULL, "
+                + detailedEntry.COL_SAVED + " INTEGER NOT NULL, "
                 + detailedEntry.COL_BUSID + " TEXT UNIQUE NOT NULL, "
                 + detailedEntry.COL_NAME + " TEXT NOT NULL, "
-                + detailedEntry.COL_SHORTLOC + " TEXT, "
-                + detailedEntry.COL_LOC + " TEXT, "
+                + detailedEntry.COL_SHORTLOC + " TEXT NOT NULL, "
+                + detailedEntry.COL_LOC + " TEXT NOT NULL, "
                 + detailedEntry.COL_OPEN + " TEXT NOT NULL, "
-                + detailedEntry.COL_CONTACT + " TEXT, "
+                + detailedEntry.COL_CONTACT + " TEXT NOT NULL, "
                 + detailedEntry.COL_IMG + " TEXT NOT NULL, "
                 + detailedEntry.COL_HOURS + " TEXT NOT NULL, "
-                + detailedEntry.COL_NEWS + " TEXT NOT NULL, "
-                + detailedEntry.COL_LOY + " TEXT NOT NULL "
+                + detailedEntry.COL_NEWS + " TEXT, "
+                + detailedEntry.COL_LOY + " TEXT "
                 + " );";
 
         // Create loyalty table
@@ -76,8 +77,22 @@ public class DatabaseOpener extends SQLiteOpenHelper {
                 + loyaltyEntry.COL_BUSID + " TEXT NOT NULL, "
                 + loyaltyEntry.COL_NAME + " TEXT NOT NULL, "
                 + loyaltyEntry.COL_CURPOINT + " INTEGER NOT NULL, "
-                + loyaltyEntry.COL_LOYALDETAIL + " TEXT NOT NULL "
+                + loyaltyEntry.COL_FAVOURITE + " TEXT NOT NULL "
                 + ");";
+
+        // Create loyalty specific table
+        final String SQL_CREATE_LOYALTY_DET_TABLE = "CREATE TABLE "
+                + DataContract.LOYALTY_DETAIL + " ("
+                + loyaltyDetailEntry._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + loyaltyDetailEntry.COL_BUSID + " TEXT NOT NULL, "
+                + loyaltyDetailEntry.COL_GREETING + " TEXT, "
+                + loyaltyDetailEntry.COL_MESSAGE + " TEXT, "
+                + loyaltyDetailEntry.COL_IMG + " TEXT, "
+                + loyaltyDetailEntry.COL_ITEM + " TEXT, "
+                + loyaltyDetailEntry.COL_ITEM_DESC + " TEXT, "
+                + loyaltyDetailEntry.COL_PTS + " INTEGER, "
+                + loyaltyDetailEntry.COL_TYPE + " INTEGER "
+                + " );";
 
         // Create search table
         final String SQL_CREATE_SEARCH_TABLE = "CREATE TABLE "
@@ -122,6 +137,7 @@ public class DatabaseOpener extends SQLiteOpenHelper {
         db.execSQL(SQL_CREATE_EVENTS_TABLE);
         db.execSQL(SQL_CREATE_TAG_TABLE);
         db.execSQL(SQL_CREATE_REC_TABLE);
+        db.execSQL(SQL_CREATE_LOYALTY_DET_TABLE);
         Log.v("DatabaseOpener", "Table created");
 
     }
@@ -140,6 +156,7 @@ public class DatabaseOpener extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS " + DataContract.SEARCH);
         db.execSQL("DROP TABLE IF EXISTS " + DataContract.EVENTS);
         db.execSQL("DROP TABLE IF EXISTS " + DataContract.RECOMMENDATION);
+        db.execSQL("DROP TABLE IF EXISTS " + DataContract.LOYALTY_DETAIL);
 
         // Create the new tables
         onCreate(db);

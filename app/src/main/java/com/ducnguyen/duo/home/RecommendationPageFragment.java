@@ -10,7 +10,10 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -22,26 +25,30 @@ import com.ducnguyen.duo.R;
 import com.ducnguyen.duo.Utility;
 import com.ducnguyen.duo.bus.BusActivity;
 import com.ducnguyen.duo.data.DataContract;
-import com.ducnguyen.duo.data.DatabaseOpener;
 
 import java.util.HashMap;
 import java.util.Map;
 
 
 /**
- * Created by ducprogram on 3/20/16.
+ * Created by ducnguyen on 3/20/16.
+ * This fragment handles the creation and management of Recommendation
+ * page. This fragment makes request for recommendation update to
+ * server, receives the updates and shows the updates to user
  */
 
-public class RecommendationPageFragment extends Fragment {
+public class RecommendationPageFragment extends Fragment implements
+        LoaderManager.LoaderCallbacks<Cursor> {
 
     public static final String LOG_TAG = RecommendationPageFragment.class
                                         .getSimpleName();
 
-    private ListView mListView;
     static LocationManager lm;
     private RecommendationPageAdapter mCursorAdapter;
 
-    public static final String[] TAG_COLS = {
+    private int LOADER_ID = 1;
+
+    public static final String[] REC_COLS = {
             DataContract.recommendEntry._ID,
             DataContract.recommendEntry.COL_BUSID,
             DataContract.recommendEntry.COL_NAME,
@@ -78,19 +85,13 @@ public class RecommendationPageFragment extends Fragment {
         }
 
         // 3. Create cursor and link it with mCursorAdapter
-        // TODO: one possible problem, Recommend table might be empty
-        DatabaseOpener mDatabaseOpener = new DatabaseOpener(getActivity());
-        Cursor query = mDatabaseOpener.getReadableDatabase()
-                            .query(DataContract.RECOMMENDATION, TAG_COLS,
-                                    null, null, null, null, null);
-        mCursorAdapter = new RecommendationPageAdapter(getActivity(), query, 0);
+        mCursorAdapter = new RecommendationPageAdapter(getActivity(), null, 0);
 
         // 4. Find ListView and set up the Adapter
-        mListView = (ListView) rootView.findViewById(R.id.listview_home_recommendation);
+        ListView mListView = (ListView) rootView.findViewById(R.id.listview_home_recommendation);
         mListView.setAdapter(mCursorAdapter);
 
         // 5. Set click listener for each item in the listView
-        // TODO: finish setOnItemClickListener after creating page for store
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -110,8 +111,29 @@ public class RecommendationPageFragment extends Fragment {
             }
         });
 
+        getLoaderManager().initLoader(LOADER_ID, null, this);
 
-        Log.v(LOG_TAG, LOG_TAG + " is succesfully created");
+        if (Utility.VERBOSITY >= 1) {
+            Log.v(LOG_TAG, LOG_TAG + " is succesfully created");
+        }
         return rootView;
+    }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        return new CursorLoader(getActivity(),
+                        DataContract.recommendEntry.buildURI(),
+                        REC_COLS,
+                        null, null, null);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
+        mCursorAdapter.changeCursor(data);
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        mCursorAdapter.changeCursor(null);
     }
 }

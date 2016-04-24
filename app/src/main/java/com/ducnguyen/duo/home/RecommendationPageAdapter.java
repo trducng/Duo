@@ -24,8 +24,7 @@ public class RecommendationPageAdapter extends CursorAdapter {
         super(context, cursor, 0);
 
         if (Utility.VERBOSITY >= 1) {
-            Log.v(LOG_TAG, LOG_TAG + " is created with "
-                    + String.valueOf(cursor.getCount()) + " rows");
+            Log.v(LOG_TAG, LOG_TAG + " is created with");
         }
     }
 

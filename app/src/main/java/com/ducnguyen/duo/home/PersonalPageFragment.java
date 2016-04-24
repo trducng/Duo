@@ -131,7 +131,9 @@ public class PersonalPageFragment extends Fragment {
             }
         });
 
-        Log.v(LOG_TAG, "Fragment successfully created");
+        if (Utility.VERBOSITY >= 1) {
+            Log.v(LOG_TAG, "Fragment successfully created");
+        }
         return rootView;
     }
 }

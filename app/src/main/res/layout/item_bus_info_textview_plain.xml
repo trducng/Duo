@@ -11,13 +11,27 @@ for reference, these are the html tags that are supported by Android TextView
 https://commonsware.com/blog/Android/2010/05/26/html-tags-supported-by-textview.html
 -->
 
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"-->
+    <!--android:layout_width="match_parent"-->
+    <!--android:layout_height="match_parent">-->
+
+    <!--<TextView-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:id="@+id/textview_bus_info_plain"/>-->
+
+<!--</FrameLayout>-->
+
+<TextView
+
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/textview_bus_info_plain"/>
-
-</FrameLayout>
+    android:layout_height="wrap_content"
+    android:id="@+id/textview_bus_info_plain"
+    android:textSize="15sp"
+    android:textColor="@android:color/white"
+    android:paddingBottom="10dp"
+    android:paddingLeft="10dp"
+    android:paddingRight="10dp"
+    android:lineSpacingExtra="1sp"
+    android:lineSpacingMultiplier="1"/>

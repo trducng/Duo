@@ -53,8 +53,7 @@ public class SearchFragment extends Fragment implements
     static final int COL_DISTANCE = 6;
 
 
-    public SearchFragment() {
-    }
+    public SearchFragment() {}
 
     @Nullable
     @Override
@@ -112,11 +111,11 @@ public class SearchFragment extends Fragment implements
 
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor data) {
-        mCursorAdapter.swapCursor(data);
+        mCursorAdapter.changeCursor(data);
     }
 
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
-        mCursorAdapter.swapCursor(null);
+        mCursorAdapter.changeCursor(null);
     }
 }
